@@ -30,6 +30,8 @@ Do not introduce web technologies, cloud services, external APIs or distributed 
 
 Phase 01 — Project Bootstrap is complete.
 
+Phase 02 — Domain Model is complete.
+
 Created:
 
 * `ControlTime.slnx`
@@ -47,12 +49,14 @@ Created:
 * `docs/PLAN_CONTROLTIME.md`
 * `docs/product-rules.md`
 * `docs/phases/phase-01.md`
+* `docs/phases/phase-02.md`
+* `ControlTime.Core` domain model (`Domain/`: `UsageRule`, `AllowedSchedule`, `AccessState`, `RuleResult`, `DomainResult`)
 
 Current phase:
 
-`Phase 02 — Domain Model` (not started)
+`Phase 03 — Rule Engine` (not started)
 
-Do not implement functionality belonging to Phase 02 or later.
+Do not implement functionality belonging to Phase 03 or later.
 
 ---
 

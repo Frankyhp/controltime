@@ -1,6 +1,10 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/ControlTime.App/ControlTime.App.csproj" />
     <Project Path="src/ControlTime.Core/ControlTime.Core.csproj" />
     <Project Path="src/ControlTime.Infrastructure/ControlTime.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/ControlTime.Tests/ControlTime.Tests.csproj" />
   </Folder>
 </Solution>

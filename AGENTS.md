@@ -28,27 +28,29 @@ Do not introduce web technologies, cloud services, external APIs or distributed 
 
 ## Current state
 
-Phase 01 — Project Bootstrap is in progress.
+Phase 01 — Project Bootstrap is complete.
 
-Already created:
+Created:
 
-* `ControlTime.sln`
+* `ControlTime.slnx`
+* `src/ControlTime.App`
 * `src/ControlTime.Core`
 * `src/ControlTime.Infrastructure`
+* `tests/ControlTime.Tests`
+* `ControlTime.App -> ControlTime.Core` project reference
+* `ControlTime.App -> ControlTime.Infrastructure` project reference
 * `ControlTime.Infrastructure -> ControlTime.Core` project reference
+* `ControlTime.Tests -> ControlTime.Core` project reference
 * Git repository
 * GitHub remote
 * `AGENTS.md`
 * `docs/PLAN_CONTROLTIME.md`
-
-Not created yet:
-
-* `src/ControlTime.App`
-* `tests/ControlTime.Tests`
+* `docs/product-rules.md`
+* `docs/phases/phase-01.md`
 
 Current phase:
 
-`Phase 01 — Project Bootstrap`
+`Phase 02 — Domain Model` (not started)
 
 Do not implement functionality belonging to Phase 02 or later.
 
@@ -88,16 +90,19 @@ Do not refactor unrelated code while implementing a phase.
 ```text
 ControlTime/
 ├── AGENTS.md
-├── ControlTime.sln
+├── ControlTime.slnx
 │
 ├── docs/
-│   └── PLAN_CONTROLTIME.md
+│   ├── PLAN_CONTROLTIME.md
+│   └── phases/
 │
 ├── src/
+│   ├── ControlTime.App/
 │   ├── ControlTime.Core/
 │   └── ControlTime.Infrastructure/
 │
 └── tests/
+    └── ControlTime.Tests/
 ```
 
 ---

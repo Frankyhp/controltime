@@ -32,6 +32,8 @@ Phase 01 — Project Bootstrap is complete.
 
 Phase 02 — Domain Model is complete.
 
+Phase 03 — Rule Engine is complete.
+
 Created:
 
 * `ControlTime.slnx`
@@ -50,13 +52,15 @@ Created:
 * `docs/product-rules.md`
 * `docs/phases/phase-01.md`
 * `docs/phases/phase-02.md`
+* `docs/phases/phase-03.md`
 * `ControlTime.Core` domain model (`Domain/`: `UsageRule`, `AllowedSchedule`, `AccessState`, `RuleResult`, `DomainResult`)
+* `ControlTime.Core` `RuleEngine` (deterministic rule evaluation)
 
 Current phase:
 
-`Phase 03 — Rule Engine` (not started)
+`Phase 04 — Persistence Foundation` (not started)
 
-Do not implement functionality belonging to Phase 03 or later.
+Do not implement functionality belonging to Phase 04 or later.
 
 ---
 

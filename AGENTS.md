@@ -34,6 +34,8 @@ Phase 02 — Domain Model is complete.
 
 Phase 03 — Rule Engine is complete.
 
+Phase 04 — Persistence Foundation is complete.
+
 Created:
 
 * `ControlTime.slnx`
@@ -53,14 +55,17 @@ Created:
 * `docs/phases/phase-01.md`
 * `docs/phases/phase-02.md`
 * `docs/phases/phase-03.md`
+* `docs/phases/phase-04.md`
 * `ControlTime.Core` domain model (`Domain/`: `UsageRule`, `AllowedSchedule`, `AccessState`, `RuleResult`, `DomainResult`)
 * `ControlTime.Core` `RuleEngine` (deterministic rule evaluation)
+* `ControlTime.Core` store interfaces (`Abstractions/`: `IUsageRuleStore`, `IAppSettingsStore`)
+* `ControlTime.Infrastructure` SQLite persistence (EF Core `ControlTimeDbContext`, `InitialCreate` migration, `SqliteUsageRuleStore`, `SqliteAppSettingsStore`)
 
 Current phase:
 
-`Phase 04 — Persistence Foundation` (not started)
+`Phase 05 — Administrator Authentication` (not started)
 
-Do not implement functionality belonging to Phase 04 or later.
+Do not implement functionality belonging to Phase 05 or later.
 
 ---
 

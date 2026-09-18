@@ -31,6 +31,23 @@ namespace ControlTime.Infrastructure.Migrations
                     b.ToTable("AppSettings");
                 });
 
+            modelBuilder.Entity("ControlTime.Infrastructure.Entities.TimeGrantEntity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("GrantedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Minutes")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("TimeGrants");
+                });
+
             modelBuilder.Entity("ControlTime.Infrastructure.Entities.UsageRuleEntity", b =>
                 {
                     b.Property<Guid>("Id")

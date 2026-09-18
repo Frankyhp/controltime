@@ -11,7 +11,9 @@ namespace ControlTime.App.ViewModels;
 public sealed class RulesViewModel : ObservableObject
 {
     private readonly IUsageRuleStore _store;
+    private readonly ITimeGrantStore _grantStore;
     private readonly IAdminAuthService _adminAuthService;
+    private readonly TimeProvider _timeProvider;
     private readonly DispatcherTimer _adminSessionTimer;
     private readonly List<Action> _raiseEditCommandCanExecute = [];
 
@@ -19,6 +21,7 @@ public sealed class RulesViewModel : ObservableObject
     private bool _showSetupPanel;
     private bool _showUnlockPanel;
     private bool _showAdminBar;
+    private bool _showGrantPanel;
     private bool _isAdminMode;
     private bool _isConfirmingDelete;
     private bool _isNewRule = true;
@@ -39,14 +42,22 @@ public sealed class RulesViewModel : ObservableObject
     private string _endTimeText = "18:00";
     private bool _unlimitedDailyLimit;
     private string _dailyLimitMinutesText = "120";
+    private string _grantMinutesText = "30";
 
-    public RulesViewModel(IUsageRuleStore store, IAdminAuthService adminAuthService)
+    public RulesViewModel(
+        IUsageRuleStore store,
+        ITimeGrantStore grantStore,
+        IAdminAuthService adminAuthService,
+        TimeProvider? timeProvider = null)
     {
         ArgumentNullException.ThrowIfNull(store);
+        ArgumentNullException.ThrowIfNull(grantStore);
         ArgumentNullException.ThrowIfNull(adminAuthService);
 
         _store = store;
+        _grantStore = grantStore;
         _adminAuthService = adminAuthService;
+        _timeProvider = timeProvider ?? TimeProvider.System;
 
         _adminSessionTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         _adminSessionTimer.Tick += (_, _) => RefreshAdminState();
@@ -56,6 +67,8 @@ public sealed class RulesViewModel : ObservableObject
         DeleteCommand = new AsyncRelayCommand(DeleteAsync, () => CanEdit && SelectedRule is not null);
         CancelDeleteCommand = new RelayCommand(CancelDelete, () => IsConfirmingDelete);
         LockAdminCommand = new RelayCommand(LockAdmin, () => IsAdminMode);
+        OpenGrantCommand = new RelayCommand(OpenGrantPanel);
+        CancelGrantCommand = new RelayCommand(CancelGrantPanel, () => ShowGrantPanel);
 
         _raiseEditCommandCanExecute.Add(NewRuleCommand.RaiseCanExecuteChanged);
         _raiseEditCommandCanExecute.Add(SaveCommand.RaiseCanExecuteChanged);
@@ -70,6 +83,8 @@ public sealed class RulesViewModel : ObservableObject
     public AsyncRelayCommand DeleteCommand { get; }
     public RelayCommand CancelDeleteCommand { get; }
     public RelayCommand LockAdminCommand { get; }
+    public RelayCommand OpenGrantCommand { get; }
+    public RelayCommand CancelGrantCommand { get; }
 
     public bool ShowSetupPanel
     {
@@ -264,6 +279,30 @@ public sealed class RulesViewModel : ObservableObject
     {
         get => _dailyLimitMinutesText;
         set => SetField(ref _dailyLimitMinutesText, value);
+    }
+
+    public bool ShowGrantPanel
+    {
+        get => _showGrantPanel;
+        private set
+        {
+            if (SetField(ref _showGrantPanel, value))
+            {
+                OnPropertyChanged(nameof(ShowGrantButton));
+                OnPropertyChanged(nameof(ShowGrantInputs));
+                CancelGrantCommand.RaiseCanExecuteChanged();
+            }
+        }
+    }
+
+    public bool ShowGrantButton => !ShowGrantPanel;
+
+    public bool ShowGrantInputs => ShowGrantPanel;
+
+    public string GrantMinutesText
+    {
+        get => _grantMinutesText;
+        set => SetField(ref _grantMinutesText, value);
     }
 
     public async Task InitializeAsync()
@@ -497,6 +536,66 @@ public sealed class RulesViewModel : ObservableObject
         RefreshAdminState();
         ErrorMessage = string.Empty;
         StatusMessage = "Modo administrador bloqueado.";
+    }
+
+    private void OpenGrantPanel()
+    {
+        ErrorMessage = string.Empty;
+        StatusMessage = string.Empty;
+        ShowGrantPanel = true;
+    }
+
+    private void CancelGrantPanel()
+    {
+        ShowGrantPanel = false;
+    }
+
+    public async Task ConfirmGrantAsync(string password)
+    {
+        ErrorMessage = string.Empty;
+        StatusMessage = string.Empty;
+
+        if (!int.TryParse(GrantMinutesText, out var minutes) || minutes <= 0)
+        {
+            ErrorMessage = "Introduce los minutos a regalar (número entero positivo).";
+            return;
+        }
+
+        var authentication = await _adminAuthService.TryEnterAdminModeAsync(password);
+
+        switch (authentication)
+        {
+            case AdminAuthenticationResult.InvalidPassword:
+                ErrorMessage = "Contraseña incorrecta.";
+                return;
+            case AdminAuthenticationResult.NotConfigured:
+                ShowGrantPanel = false;
+                ShowSetupPanel = true;
+                RefreshAdminState();
+                return;
+        }
+
+        var now = _timeProvider.GetUtcNow();
+
+        var grantResult = TimeGrant.TryCreate(now, minutes, out var grant);
+
+        if (grantResult.Failed)
+        {
+            ErrorMessage = DomainErrorTranslator.Translate(grantResult.Error);
+            return;
+        }
+
+        await _grantStore.AddAsync(grant!);
+
+        var todayGrants = await _grantStore.GetGrantsForDayAsync(
+            DateOnly.FromDateTime(now.LocalDateTime),
+            TimeZoneInfo.Local.GetUtcOffset(now));
+
+        var totalToday = todayGrants.Sum(g => g.Minutes);
+
+        ShowGrantPanel = false;
+        RefreshAdminState();
+        StatusMessage = $"Regalados {minutes} minutos para hoy. Total regalado hoy: {totalToday} minutos.";
     }
 
     private HashSet<DayOfWeek> SelectedDays()

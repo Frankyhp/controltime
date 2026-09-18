@@ -15,6 +15,7 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
@@ -60,7 +61,30 @@
             </StackPanel>
         </Border>
 
-        <Grid Grid.Row="3">
+        <Border Grid.Row="3"
+                Margin="0,0,0,8"
+                Padding="10"
+                Background="#FFF3E8F8">
+            <StackPanel Orientation="Horizontal">
+                <TextBlock VerticalAlignment="Center" Margin="0,0,10,0"
+                           Text="Tiempo extra para hoy:" />
+                <Button Content="Regalar tiempo" Padding="10,4"
+                        Command="{Binding OpenGrantCommand}"
+                        Visibility="{Binding ShowGrantButton, Converter={StaticResource BoolToVis}}" />
+                <StackPanel Orientation="Horizontal"
+                            Visibility="{Binding ShowGrantInputs, Converter={StaticResource BoolToVis}}">
+                    <TextBlock VerticalAlignment="Center" Margin="0,0,6,0" Text="Minutos:" />
+                    <TextBox x:Name="GrantMinutesBox" Width="60" VerticalAlignment="Center" Margin="0,0,10,0"
+                             Text="{Binding GrantMinutesText, UpdateSourceTrigger=PropertyChanged}" />
+                    <TextBlock VerticalAlignment="Center" Margin="0,0,6,0" Text="Contraseña:" />
+                    <PasswordBox x:Name="GrantPasswordBox" Width="220" VerticalAlignment="Center" Margin="0,0,10,0" />
+                    <Button Content="Confirmar" Padding="10,4" Margin="0,0,8,0" Click="OnGrantConfirmClick" />
+                    <Button Content="Cancelar" Padding="10,4" Command="{Binding CancelGrantCommand}" />
+                </StackPanel>
+            </StackPanel>
+        </Border>
+
+        <Grid Grid.Row="4">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="320" />
                 <ColumnDefinition Width="*" />
@@ -137,7 +161,7 @@
             </GroupBox>
         </Grid>
 
-        <StackPanel Grid.Row="4" Margin="0,8,0,0">
+        <StackPanel Grid.Row="5" Margin="0,8,0,0">
             <TextBlock TextWrapping="Wrap"
                        Foreground="#FFB00000"
                        Text="{Binding ErrorMessage}" />

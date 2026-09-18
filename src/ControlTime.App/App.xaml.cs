@@ -66,6 +66,7 @@ public partial class App : Application
 
         services.AddTransient<IUsageRuleStore, SqliteUsageRuleStore>();
         services.AddTransient<IAppSettingsStore, SqliteAppSettingsStore>();
+        services.AddTransient<ITimeGrantStore, SqliteTimeGrantStore>();
         services.AddSingleton<IPasswordHasher, Pbkdf2PasswordHasher>();
         services.AddSingleton<IAdminAuthService>(provider => new AdminAuthService(
             provider.GetRequiredService<IAppSettingsStore>(),

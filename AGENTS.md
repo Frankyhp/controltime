@@ -40,6 +40,8 @@ Phase 05 — Administrator Authentication is complete.
 
 Phase 06 — Rules Management UI is complete.
 
+Phase 07 — Bonus Time / Time Grants is complete.
+
 Created:
 
 * `ControlTime.slnx`
@@ -72,12 +74,17 @@ Created:
 * `ControlTime.App` DI composition (`App.xaml.cs`: `ServiceProvider`, DbContext singleton, stores, `AdminAuthService`, `Migrate()` on startup)
 * `ControlTime.App` minimal MVVM (`Mvvm/`: `ObservableObject`, `RelayCommand`, `AsyncRelayCommand`)
 * `ControlTime.App` Rules screen (`Views/RulesView`, `ViewModels/RulesViewModel`, `RuleListItem`, `Presentation/DomainErrorTranslator`): rules CRUD behind the admin gate
+* `docs/phases/phase-07.md`
+* `ControlTime.Core` `TimeGrant` (`Domain/`) and `ITimeGrantStore` (`Abstractions/`)
+* `ControlTime.Core` `RuleEngine` bonus support: optional `bonusToday` raises each rule's daily limit during evaluation
+* `ControlTime.Infrastructure` time grant persistence (`TimeGrantEntity`, `AddTimeGrants` migration, `SqliteTimeGrantStore`)
+* `ControlTime.App` "Regalar tiempo" inline grant panel in the Rules screen (administrator password required for every grant)
 
 Current phase:
 
-`Phase 07 — Bonus Time / Time Grants` (not started)
+`Phase 08 — Dashboard Foundation` (not started)
 
-Do not implement functionality belonging to Phase 07 or later.
+Do not implement functionality belonging to Phase 08 or later.
 
 ---
 

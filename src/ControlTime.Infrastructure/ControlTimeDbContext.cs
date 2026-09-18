@@ -9,6 +9,8 @@ public class ControlTimeDbContext(DbContextOptions<ControlTimeDbContext> options
 
     public DbSet<AppSettingEntity> AppSettings => Set<AppSettingEntity>();
 
+    public DbSet<TimeGrantEntity> TimeGrants => Set<TimeGrantEntity>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<UsageRuleEntity>(entity =>
@@ -23,6 +25,12 @@ public class ControlTimeDbContext(DbContextOptions<ControlTimeDbContext> options
             entity.HasKey(e => e.Key);
             entity.Property(e => e.Key).IsRequired();
             entity.Property(e => e.Value).IsRequired();
+        });
+
+        modelBuilder.Entity<TimeGrantEntity>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Minutes).IsRequired();
         });
     }
 }

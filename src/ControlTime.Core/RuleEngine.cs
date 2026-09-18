@@ -25,13 +25,19 @@ public sealed class RuleEngine
     public RuleResult Evaluate(
         DateTimeOffset now,
         TimeSpan usageToday,
-        IReadOnlyCollection<UsageRule> rules)
+        IReadOnlyCollection<UsageRule> rules,
+        TimeSpan bonusToday = default)
     {
         ArgumentNullException.ThrowIfNull(rules);
 
         if (usageToday < TimeSpan.Zero)
         {
             throw new ArgumentOutOfRangeException(nameof(usageToday));
+        }
+
+        if (bonusToday < TimeSpan.Zero)
+        {
+            throw new ArgumentOutOfRangeException(nameof(bonusToday));
         }
 
         List<UsageRule> enabled = rules.Where(r => r.Enabled).ToList();
@@ -62,7 +68,7 @@ public sealed class RuleEngine
                 continue;
             }
 
-            if (rule.DailyLimit is TimeSpan limit && usageToday >= limit)
+            if (rule.DailyLimit is TimeSpan limit && usageToday >= limit + bonusToday)
             {
                 limitReachedInWindow = true;
                 continue;
@@ -81,7 +87,7 @@ public sealed class RuleEngine
             }
 
             TimeSpan remaining = satisfied
-                .Select(r => r.DailyLimit!.Value - usageToday)
+                .Select(r => r.DailyLimit!.Value + bonusToday - usageToday)
                 .Max();
 
             AccessState state = remaining <= _warningThreshold

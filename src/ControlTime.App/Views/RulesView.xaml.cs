@@ -41,4 +41,13 @@ public partial class RulesView : UserControl
             UnlockPasswordBox.Clear();
         }
     }
+
+    private async void OnGrantConfirmClick(object sender, RoutedEventArgs e)
+    {
+        if (ViewModel is { } viewModel)
+        {
+            await viewModel.ConfirmGrantAsync(GrantPasswordBox.Password);
+            GrantPasswordBox.Clear();
+        }
+    }
 }

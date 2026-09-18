@@ -38,6 +38,8 @@ Phase 04 — Persistence Foundation is complete.
 
 Phase 05 — Administrator Authentication is complete.
 
+Phase 06 — Rules Management UI is complete.
+
 Created:
 
 * `ControlTime.slnx`
@@ -66,12 +68,16 @@ Created:
 * `ControlTime.Core` `IPasswordHasher` (`Abstractions/`)
 * `ControlTime.Core` `Pbkdf2PasswordHasher` (PBKDF2-HMAC-SHA256, self-describing hash format)
 * `ControlTime.Core` `IAdminAuthService` / `AdminAuthService` (password setup, verification, time-limited admin mode via `TimeProvider`)
+* `docs/phases/phase-06.md`
+* `ControlTime.App` DI composition (`App.xaml.cs`: `ServiceProvider`, DbContext singleton, stores, `AdminAuthService`, `Migrate()` on startup)
+* `ControlTime.App` minimal MVVM (`Mvvm/`: `ObservableObject`, `RelayCommand`, `AsyncRelayCommand`)
+* `ControlTime.App` Rules screen (`Views/RulesView`, `ViewModels/RulesViewModel`, `RuleListItem`, `Presentation/DomainErrorTranslator`): rules CRUD behind the admin gate
 
 Current phase:
 
-`Phase 06 — Rules Management UI` (not started)
+`Phase 07 — Bonus Time / Time Grants` (not started)
 
-Do not implement functionality belonging to Phase 06 or later.
+Do not implement functionality belonging to Phase 07 or later.
 
 ---
 

@@ -163,6 +163,30 @@ public sealed class PersistenceIntegrationTests : IDisposable
         Assert.Equal("value-2", await store.GetAsync("sample.key"));
     }
 
+    [Fact]
+    public async Task AdminPassword_SetThenVerifyFromNewContext_SucceedsWithoutStoringPlainText()
+    {
+        using var context = CreateContext();
+        await context.Database.MigrateAsync();
+
+        var service = new AdminAuthService(new SqliteAppSettingsStore(context), new Pbkdf2PasswordHasher());
+        Assert.Equal(AdminPasswordResult.Success, await service.SetPasswordAsync("sqlite-admin-pass"));
+
+        using var reader = CreateContext();
+        var reloaded = new AdminAuthService(new SqliteAppSettingsStore(reader), new Pbkdf2PasswordHasher());
+
+        Assert.True(await reloaded.HasPasswordAsync());
+        Assert.Equal(AdminAuthenticationResult.Success,
+            await reloaded.TryEnterAdminModeAsync("sqlite-admin-pass"));
+        Assert.Equal(AdminAuthenticationResult.InvalidPassword,
+            await reloaded.TryEnterAdminModeAsync("wrong-password"));
+
+        var storedHash = await new SqliteAppSettingsStore(reader)
+            .GetAsync(AdminAuthService.PasswordHashSettingKey);
+        Assert.NotNull(storedHash);
+        Assert.DoesNotContain("sqlite-admin-pass", storedHash);
+    }
+
     public void Dispose()
     {
         SqliteConnection.ClearAllPools();

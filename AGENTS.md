@@ -36,6 +36,8 @@ Phase 03 — Rule Engine is complete.
 
 Phase 04 — Persistence Foundation is complete.
 
+Phase 05 — Administrator Authentication is complete.
+
 Created:
 
 * `ControlTime.slnx`
@@ -60,12 +62,16 @@ Created:
 * `ControlTime.Core` `RuleEngine` (deterministic rule evaluation)
 * `ControlTime.Core` store interfaces (`Abstractions/`: `IUsageRuleStore`, `IAppSettingsStore`)
 * `ControlTime.Infrastructure` SQLite persistence (EF Core `ControlTimeDbContext`, `InitialCreate` migration, `SqliteUsageRuleStore`, `SqliteAppSettingsStore`)
+* `docs/phases/phase-05.md`
+* `ControlTime.Core` `IPasswordHasher` (`Abstractions/`)
+* `ControlTime.Core` `Pbkdf2PasswordHasher` (PBKDF2-HMAC-SHA256, self-describing hash format)
+* `ControlTime.Core` `IAdminAuthService` / `AdminAuthService` (password setup, verification, time-limited admin mode via `TimeProvider`)
 
 Current phase:
 
-`Phase 05 — Administrator Authentication` (not started)
+`Phase 06 — Rules Management UI` (not started)
 
-Do not implement functionality belonging to Phase 05 or later.
+Do not implement functionality belonging to Phase 06 or later.
 
 ---
 

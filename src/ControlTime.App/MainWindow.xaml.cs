@@ -1,4 +1,5 @@
-﻿using System.Windows;
+﻿using System.ComponentModel;
+using System.Windows;
 using ControlTime.App.ViewModels;
 
 namespace ControlTime.App;
@@ -8,6 +9,8 @@ namespace ControlTime.App;
 /// </summary>
 public partial class MainWindow : Window
 {
+    private bool _closingForShutdown;
+
     public MainWindow(MainViewModel viewModel)
     {
         ArgumentNullException.ThrowIfNull(viewModel);
@@ -15,5 +18,23 @@ public partial class MainWindow : Window
         InitializeComponent();
 
         DataContext = viewModel;
+    }
+
+    public void CloseForShutdown()
+    {
+        _closingForShutdown = true;
+        Close();
+    }
+
+    protected override void OnClosing(CancelEventArgs e)
+    {
+        if (!_closingForShutdown)
+        {
+            e.Cancel = true;
+            Hide();
+            return;
+        }
+
+        base.OnClosing(e);
     }
 }

@@ -3,6 +3,7 @@ using ControlTime.App.Services;
 using ControlTime.App.ViewModels;
 using ControlTime.Core;
 using ControlTime.Core.Abstractions;
+using ControlTime.Core.Domain;
 using ControlTime.Core.Services;
 using ControlTime.Infrastructure;
 using ControlTime.Infrastructure.Windows;
@@ -18,6 +19,8 @@ namespace ControlTime.App;
 public partial class App : Application
 {
     private ServiceProvider? _services;
+    private MonitoringHost? _monitoringHost;
+    private Action<MonitorState>? _trayStateChangedHandler;
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -49,6 +52,8 @@ public partial class App : Application
         }
 
         MonitoringHost monitoringHost = services.GetRequiredService<MonitoringHost>();
+        _monitoringHost = monitoringHost;
+
         WarningNotifier warningNotifier = services.GetRequiredService<WarningNotifier>();
 
         ILogger<WarningNotifier> notifierLogger =
@@ -95,6 +100,29 @@ public partial class App : Application
                     EnforcementDisabledVariable);
         }
 
+        TrayIconService trayIcon = services.GetRequiredService<TrayIconService>();
+
+        ILogger<TrayIconService> trayLogger =
+            services.GetRequiredService<ILogger<TrayIconService>>();
+
+        trayIcon.ExitRequested += HandleTrayExit;
+
+        _trayStateChangedHandler = state =>
+        {
+            try
+            {
+                trayIcon.UpdateState(state);
+            }
+            catch (Exception ex)
+            {
+                trayLogger.LogError(ex, "No se pudo actualizar el icono de la bandeja.");
+            }
+        };
+
+        monitoringHost.StateChanged += _trayStateChangedHandler;
+
+        _ = trayIcon.SyncAutoStartFromSettingsAsync();
+
         monitoringHost.Start();
 
         MainWindow = services.GetRequiredService<MainWindow>();
@@ -103,8 +131,23 @@ public partial class App : Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        if (_monitoringHost is not null && _trayStateChangedHandler is not null)
+        {
+            _monitoringHost.StateChanged -= _trayStateChangedHandler;
+        }
+
         _services?.Dispose();
         base.OnExit(e);
+    }
+
+    private void HandleTrayExit()
+    {
+        if (_services?.GetService<MainWindow>() is { } window)
+        {
+            window.CloseForShutdown();
+        }
+
+        Shutdown();
     }
 
     private const string EnforcementDisabledVariable = "CONTROLTIME_ENFORCEMENT";
@@ -150,7 +193,6 @@ public partial class App : Application
         services.AddTransient<MonitoringService>();
         services.AddSingleton<MonitoringHost>();
 
-        services.AddSingleton<INotifier, BalloonTipNotifier>();
         services.AddSingleton<WarningEvaluator>();
         services.AddSingleton<WarningNotifier>(provider => new WarningNotifier(
             provider.GetRequiredService<WarningEvaluator>(),
@@ -159,10 +201,19 @@ public partial class App : Application
         services.AddSingleton<ISessionLock, WindowsSessionLock>();
         services.AddSingleton<EnforcementService>();
 
+        services.AddSingleton<IAutostartRegistrar, WindowsAutoStartRegistry>();
+        services.AddSingleton<TrayIconService>(provider => new TrayIconService(
+            provider.GetRequiredService<IAutostartRegistrar>(),
+            provider.GetRequiredService<IAppSettingsStore>(),
+            provider.GetRequiredService<MainWindow>(),
+            provider.GetRequiredService<ILogger<TrayIconService>>()));
+        services.AddSingleton<INotifier>(
+            provider => provider.GetRequiredService<TrayIconService>());
+
         services.AddTransient<DashboardViewModel>();
         services.AddTransient<RulesViewModel>();
         services.AddTransient<MainViewModel>();
-        services.AddTransient<MainWindow>();
+        services.AddSingleton<MainWindow>();
 
         return services.BuildServiceProvider();
     }

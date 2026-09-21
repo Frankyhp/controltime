@@ -3,6 +3,7 @@ using System.Windows.Media;
 using System.Windows.Threading;
 using ControlTime.App.Mvvm;
 using ControlTime.App.Presentation;
+using ControlTime.Core.Abstractions;
 using ControlTime.Core.Domain;
 using ControlTime.Core.Services;
 
@@ -13,6 +14,7 @@ public sealed class DashboardViewModel : ObservableObject
     private static readonly CultureInfo SpanishCulture = CultureInfo.GetCultureInfo("es-ES");
 
     private readonly DashboardService _dashboardService;
+    private readonly IActivityMonitor _activityMonitor;
     private readonly DispatcherTimer _refreshTimer;
 
     private bool _initialized;
@@ -27,13 +29,20 @@ public sealed class DashboardViewModel : ObservableObject
     private string _allowanceText = "—";
     private string _scheduleText = "—";
     private string _remainingText = "—";
+    private string _activityText = "—";
+    private Brush _activityBrush = Brushes.Gray;
     private string _errorMessage = string.Empty;
 
-    public DashboardViewModel(DashboardService dashboardService, TimeProvider? timeProvider = null)
+    public DashboardViewModel(
+        DashboardService dashboardService,
+        IActivityMonitor activityMonitor,
+        TimeProvider? timeProvider = null)
     {
         ArgumentNullException.ThrowIfNull(dashboardService);
+        ArgumentNullException.ThrowIfNull(activityMonitor);
 
         _dashboardService = dashboardService;
+        _activityMonitor = activityMonitor;
         TimeProvider = timeProvider ?? TimeProvider.System;
 
         _refreshTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
@@ -102,6 +111,18 @@ public sealed class DashboardViewModel : ObservableObject
         private set => SetField(ref _remainingText, value);
     }
 
+    public string ActivityText
+    {
+        get => _activityText;
+        private set => SetField(ref _activityText, value);
+    }
+
+    public Brush ActivityBrush
+    {
+        get => _activityBrush;
+        private set => SetField(ref _activityBrush, value);
+    }
+
     public string ErrorMessage
     {
         get => _errorMessage;
@@ -153,9 +174,30 @@ public sealed class DashboardViewModel : ObservableObject
         {
             ErrorMessage = "No se pudo leer el estado: " + ex.Message;
         }
-        finally
+
+        RefreshActivity();
+
+        _refreshing = false;
+    }
+
+    private void RefreshActivity()
+    {
+        try
         {
-            _refreshing = false;
+            ActivityStatus status = _activityMonitor.GetCurrentStatus();
+
+            ActivityText = ActivityStateTranslator.Translate(status.State);
+            ActivityBrush = status.State switch
+            {
+                ActivityState.Active => new SolidColorBrush(Color.FromRgb(0x1B, 0x5E, 0x20)),
+                ActivityState.Idle => new SolidColorBrush(Color.FromRgb(0xE6, 0x51, 0x00)),
+                _ => new SolidColorBrush(Color.FromRgb(0x5A, 0x6B, 0x80)),
+            };
+        }
+        catch (Exception)
+        {
+            ActivityText = "No disponible";
+            ActivityBrush = Brushes.Gray;
         }
     }
 

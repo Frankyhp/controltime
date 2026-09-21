@@ -4,6 +4,7 @@ using ControlTime.Core;
 using ControlTime.Core.Abstractions;
 using ControlTime.Core.Services;
 using ControlTime.Infrastructure;
+using ControlTime.Infrastructure.Windows;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -73,6 +74,9 @@ public partial class App : Application
         services.AddSingleton<IAdminAuthService>(provider => new AdminAuthService(
             provider.GetRequiredService<IAppSettingsStore>(),
             provider.GetRequiredService<IPasswordHasher>()));
+
+        services.AddSingleton<IActivityMonitor>(provider => new WindowsActivityMonitor(
+            logger: provider.GetService<ILogger<WindowsActivityMonitor>>()));
 
         services.AddSingleton<RuleEngine>(_ => new RuleEngine());
         services.AddTransient<UsageService>();

@@ -64,6 +64,14 @@
             <WrapPanel>
                 <Border Style="{StaticResource Card}">
                     <StackPanel>
+                        <TextBlock Style="{StaticResource CardLabel}" Text="Actividad" />
+                        <TextBlock Style="{StaticResource CardValue}"
+                                   Text="{Binding ActivityText}"
+                                   Foreground="{Binding ActivityBrush}" />
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource Card}">
+                    <StackPanel>
                         <TextBlock Style="{StaticResource CardLabel}" Text="Límite diario configurado" />
                         <TextBlock Style="{StaticResource CardValue}" Text="{Binding LimitText}" />
                     </StackPanel>

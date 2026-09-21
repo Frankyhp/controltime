@@ -92,11 +92,16 @@ Created:
 * `ControlTime.Infrastructure` usage session persistence (`UsageSessionEntity`, `AddUsageSessions` migration, `SqliteUsageSessionStore`)
 * `ControlTime.App` Dashboard now evaluates with real usage today from stored sessions (no longer simulated)
 
+* `docs/phases/phase-10.md`
+* `ControlTime.Core` `ActivityState` / `ActivityStatus` (`Domain/`), `ActivityEvaluator` (`Services/`), `IActivityMonitor` (`Abstractions/`)
+* `ControlTime.Infrastructure` Windows activity detection (`Windows/`: `LastInputInfo`, `SessionLockProbe`, `WindowsActivityMonitor`, pure P/Invoke polling)
+* `ControlTime.App` Dashboard "Actividad" card (Activo / Ocioso / Bloqueado, refreshed ~1 s)
+
 Current phase:
 
-`Phase 10 — Windows Activity Detection` (not started)
+`Phase 11 — Automatic Usage Tracking` (not started)
 
-Do not implement functionality belonging to Phase 10 or later.
+Do not implement functionality belonging to Phase 11 or later.
 
 ---
 

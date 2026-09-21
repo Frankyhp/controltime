@@ -11,6 +11,8 @@ public class ControlTimeDbContext(DbContextOptions<ControlTimeDbContext> options
 
     public DbSet<TimeGrantEntity> TimeGrants => Set<TimeGrantEntity>();
 
+    public DbSet<UsageSessionEntity> UsageSessions => Set<UsageSessionEntity>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<UsageRuleEntity>(entity =>
@@ -31,6 +33,12 @@ public class ControlTimeDbContext(DbContextOptions<ControlTimeDbContext> options
         {
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Minutes).IsRequired();
+        });
+
+        modelBuilder.Entity<UsageSessionEntity>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.StartedAtUtc);
         });
     }
 }

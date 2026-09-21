@@ -44,6 +44,8 @@ Phase 07 — Bonus Time / Time Grants is complete.
 
 Phase 08 — Dashboard Foundation is complete.
 
+Phase 09 — Usage Sessions is complete.
+
 Created:
 
 * `ControlTime.slnx`
@@ -85,12 +87,16 @@ Created:
 * `ControlTime.Core` `DashboardSnapshot` (`Domain/`) and `DashboardService` (`Services/`): composes rules, today's grants and `RuleEngine` into a single dashboard snapshot
 * `ControlTime.App` Dashboard screen (`Views/DashboardView`, `ViewModels/DashboardViewModel`): access state, usage (simulated), configured limit, bonus today, effective allowance, remaining time, active schedule
 * `ControlTime.App` minimal navigation (`MainWindow` shell + `MainViewModel`: Dashboard / Reglas tabs)
+* `docs/phases/phase-09.md`
+* `ControlTime.Core` `UsageSession` (`Domain/`, open sessions via nullable `EndedAt`), `UsageCalculator` and `UsageService` (`Services/`), `IUsageSessionStore` (`Abstractions/`)
+* `ControlTime.Infrastructure` usage session persistence (`UsageSessionEntity`, `AddUsageSessions` migration, `SqliteUsageSessionStore`)
+* `ControlTime.App` Dashboard now evaluates with real usage today from stored sessions (no longer simulated)
 
 Current phase:
 
-`Phase 09 — Usage Sessions` (not started)
+`Phase 10 — Windows Activity Detection` (not started)
 
-Do not implement functionality belonging to Phase 09 or later.
+Do not implement functionality belonging to Phase 10 or later.
 
 ---
 

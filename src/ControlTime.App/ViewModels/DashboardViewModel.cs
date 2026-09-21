@@ -21,7 +21,7 @@ public sealed class DashboardViewModel : ObservableObject
     private Brush _stateBrush = Brushes.Gray;
     private string _reasonText = string.Empty;
     private string _nextAllowedText = string.Empty;
-    private string _usageText = "0:00 (simulado)";
+    private string _usageText = "—";
     private string _limitText = "—";
     private string _bonusText = "0:00";
     private string _allowanceText = "—";
@@ -184,6 +184,8 @@ public sealed class DashboardViewModel : ObservableObject
             : snapshot.ConfiguredDailyLimit is TimeSpan limit
                 ? FormatHoursMinutes(limit)
                 : "Sin límite";
+
+        UsageText = FormatHoursMinutes(snapshot.UsageToday);
 
         BonusText = FormatHoursMinutes(snapshot.BonusToday);
 

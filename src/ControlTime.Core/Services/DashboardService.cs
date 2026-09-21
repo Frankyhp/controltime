@@ -7,21 +7,25 @@ public sealed class DashboardService
 {
     private readonly IUsageRuleStore _ruleStore;
     private readonly ITimeGrantStore _grantStore;
+    private readonly UsageService _usageService;
     private readonly RuleEngine _ruleEngine;
     private readonly TimeProvider _timeProvider;
 
     public DashboardService(
         IUsageRuleStore ruleStore,
         ITimeGrantStore grantStore,
+        UsageService usageService,
         RuleEngine ruleEngine,
         TimeProvider? timeProvider = null)
     {
         ArgumentNullException.ThrowIfNull(ruleStore);
         ArgumentNullException.ThrowIfNull(grantStore);
+        ArgumentNullException.ThrowIfNull(usageService);
         ArgumentNullException.ThrowIfNull(ruleEngine);
 
         _ruleStore = ruleStore;
         _grantStore = grantStore;
+        _usageService = usageService;
         _ruleEngine = ruleEngine;
         _timeProvider = timeProvider ?? TimeProvider.System;
     }
@@ -43,7 +47,9 @@ public sealed class DashboardService
 
         TimeSpan bonusToday = TimeSpan.FromTicks(grants.Sum(g => g.Amount.Ticks));
 
-        RuleResult result = _ruleEngine.Evaluate(now, TimeSpan.Zero, rules, bonusToday);
+        TimeSpan usageToday = await _usageService.GetUsageTodayAsync(utcOffset, cancellationToken);
+
+        RuleResult result = _ruleEngine.Evaluate(now, usageToday, rules, bonusToday);
 
         List<UsageRule> enabled = rules.Where(r => r.Enabled).ToList();
 
@@ -63,7 +69,8 @@ public sealed class DashboardService
             configuredLimit,
             bonusToday,
             activeSchedule,
-            enabled.Count > 0);
+            enabled.Count > 0,
+            usageToday);
     }
 
     private static AllowedSchedule? ResolveActiveSchedule(

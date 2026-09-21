@@ -68,15 +68,18 @@ public partial class App : Application
         services.AddTransient<IUsageRuleStore, SqliteUsageRuleStore>();
         services.AddTransient<IAppSettingsStore, SqliteAppSettingsStore>();
         services.AddTransient<ITimeGrantStore, SqliteTimeGrantStore>();
+        services.AddTransient<IUsageSessionStore, SqliteUsageSessionStore>();
         services.AddSingleton<IPasswordHasher, Pbkdf2PasswordHasher>();
         services.AddSingleton<IAdminAuthService>(provider => new AdminAuthService(
             provider.GetRequiredService<IAppSettingsStore>(),
             provider.GetRequiredService<IPasswordHasher>()));
 
         services.AddSingleton<RuleEngine>(_ => new RuleEngine());
+        services.AddTransient<UsageService>();
         services.AddTransient<DashboardService>(provider => new DashboardService(
             provider.GetRequiredService<IUsageRuleStore>(),
             provider.GetRequiredService<ITimeGrantStore>(),
+            provider.GetRequiredService<UsageService>(),
             provider.GetRequiredService<RuleEngine>()));
 
         services.AddTransient<DashboardViewModel>();

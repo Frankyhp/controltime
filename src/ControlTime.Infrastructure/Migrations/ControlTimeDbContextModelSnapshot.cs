@@ -78,6 +78,25 @@ namespace ControlTime.Infrastructure.Migrations
 
                     b.ToTable("UsageRules");
                 });
+
+            modelBuilder.Entity("ControlTime.Infrastructure.Entities.UsageSessionEntity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("EndedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("StartedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StartedAtUtc");
+
+                    b.ToTable("UsageSessions");
+                });
 #pragma warning restore 612, 618
         }
     }

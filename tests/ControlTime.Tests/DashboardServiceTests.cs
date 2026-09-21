@@ -53,12 +53,18 @@ public class DashboardServiceTests
         DateTimeOffset now,
         params UsageRule[] rules)
     {
-        IUsageRuleStore ruleStore = new FakeUsageRuleStore(rules);
-        ITimeGrantStore grantStore = new FakeTimeGrantStore();
+        return CreateService(now, [], rules);
+    }
 
+    private static DashboardService CreateService(
+        DateTimeOffset now,
+        UsageSession[] sessions,
+        params UsageRule[] rules)
+    {
         return new DashboardService(
-            ruleStore,
-            grantStore,
+            new FakeUsageRuleStore(rules),
+            new FakeTimeGrantStore(),
+            new UsageService(new FakeUsageSessionStore(sessions), new FixedTimeProvider(now)),
             new RuleEngine(),
             new FixedTimeProvider(now));
     }
@@ -87,6 +93,7 @@ public class DashboardServiceTests
         var service = new DashboardService(
             new FakeUsageRuleStore(CreateRule(limitMinutes: 120)),
             grantStore,
+            new UsageService(new FakeUsageSessionStore(), new FixedTimeProvider(now)),
             new RuleEngine(),
             new FixedTimeProvider(now));
 
@@ -149,6 +156,7 @@ public class DashboardServiceTests
         var service = new DashboardService(
             new FakeUsageRuleStore(CreateRule(limitMinutes: 120)),
             grantStore,
+            new UsageService(new FakeUsageSessionStore(), new FixedTimeProvider(now)),
             new RuleEngine(),
             new FixedTimeProvider(now));
 
@@ -156,6 +164,33 @@ public class DashboardServiceTests
 
         Assert.Equal(TimeSpan.Zero, snapshot.BonusToday);
         Assert.Equal(TimeSpan.FromMinutes(120), snapshot.EffectiveDailyAllowance);
+    }
+
+    [Fact]
+    public async Task GetSnapshot_UsageToday_ReducesRemainingTime()
+    {
+        var now = At(DayOfWeek.Monday, 12);
+
+        var used = CreateSession(now.AddHours(-2), now.AddHours(-1));
+
+        var service = CreateService(
+            now,
+            [used],
+            CreateRule(limitMinutes: 120, startHour: 9, endHour: 18));
+
+        var snapshot = await service.GetSnapshotAsync(Utc);
+
+        Assert.Equal(TimeSpan.FromHours(1), snapshot.UsageToday);
+        Assert.Equal(AccessState.Allowed, snapshot.State);
+        Assert.Equal(TimeSpan.FromMinutes(60), snapshot.RemainingTime);
+    }
+
+    private static UsageSession CreateSession(DateTimeOffset startedAt, DateTimeOffset endedAt)
+    {
+        var result = UsageSession.TryCreate(startedAt, endedAt, out var session);
+        Assert.True(result.Success, result.Error);
+
+        return session!;
     }
 
     private sealed class FixedTimeProvider(DateTimeOffset now) : TimeProvider
@@ -207,6 +242,32 @@ public class DashboardServiceTests
                 .ToList();
 
             return Task.FromResult<IReadOnlyList<TimeGrant>>(matches);
+        }
+    }
+
+    private sealed class FakeUsageSessionStore(params UsageSession[] sessions) : IUsageSessionStore
+    {
+        private readonly List<UsageSession> _sessions = [.. sessions];
+
+        public Task AddAsync(UsageSession session, CancellationToken cancellationToken = default)
+        {
+            _sessions.Add(session);
+            return Task.CompletedTask;
+        }
+
+        public Task UpdateAsync(UsageSession session, CancellationToken cancellationToken = default)
+            => Task.CompletedTask;
+
+        public Task<IReadOnlyList<UsageSession>> GetSessionsOverlappingAsync(
+            DateTimeOffset from,
+            DateTimeOffset to,
+            CancellationToken cancellationToken = default)
+        {
+            var matches = _sessions
+                .Where(s => s.StartedAt < to && (s.EndedAt is null || s.EndedAt > from))
+                .ToList();
+
+            return Task.FromResult<IReadOnlyList<UsageSession>>(matches);
         }
     }
 }

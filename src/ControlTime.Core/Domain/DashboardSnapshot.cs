@@ -8,7 +8,8 @@ public sealed record DashboardSnapshot(
     TimeSpan? ConfiguredDailyLimit,
     TimeSpan BonusToday,
     AllowedSchedule? ActiveSchedule,
-    bool HasEnabledRules)
+    bool HasEnabledRules,
+    TimeSpan UsageToday)
 {
     public TimeSpan? EffectiveDailyAllowance => ConfiguredDailyLimit is TimeSpan limit
         ? limit + BonusToday

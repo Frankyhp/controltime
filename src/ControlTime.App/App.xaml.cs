@@ -66,6 +66,35 @@ public partial class App : Application
             }
         };
 
+        if (IsEnforcementEnabled())
+        {
+            EnforcementService enforcementService = services.GetRequiredService<EnforcementService>();
+
+            ILogger<EnforcementService> enforcementLogger =
+                services.GetRequiredService<ILogger<EnforcementService>>();
+
+            monitoringHost.StateChanged += state =>
+            {
+                try
+                {
+                    enforcementService.Process(state);
+                }
+                catch (Exception ex)
+                {
+                    enforcementLogger.LogError(ex, "El bloqueo de seguridad no pudo evaluarse.");
+                }
+            };
+        }
+        else
+        {
+            services.GetRequiredService<ILoggerFactory>()
+                .CreateLogger(nameof(App))
+                .LogWarning(
+                    "El bloqueo de sesión está desactivado por la variable de entorno " +
+                    "{Variable}.",
+                    EnforcementDisabledVariable);
+        }
+
         monitoringHost.Start();
 
         MainWindow = services.GetRequiredService<MainWindow>();
@@ -77,6 +106,14 @@ public partial class App : Application
         _services?.Dispose();
         base.OnExit(e);
     }
+
+    private const string EnforcementDisabledVariable = "CONTROLTIME_ENFORCEMENT";
+
+    private static bool IsEnforcementEnabled() =>
+        !string.Equals(
+            Environment.GetEnvironmentVariable(EnforcementDisabledVariable),
+            "off",
+            StringComparison.OrdinalIgnoreCase);
 
     private static ServiceProvider CreateServices()
     {
@@ -118,6 +155,9 @@ public partial class App : Application
         services.AddSingleton<WarningNotifier>(provider => new WarningNotifier(
             provider.GetRequiredService<WarningEvaluator>(),
             provider.GetRequiredService<INotifier>()));
+
+        services.AddSingleton<ISessionLock, WindowsSessionLock>();
+        services.AddSingleton<EnforcementService>();
 
         services.AddTransient<DashboardViewModel>();
         services.AddTransient<RulesViewModel>();

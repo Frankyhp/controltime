@@ -54,6 +54,8 @@ Phase 12 — Background Monitoring is complete.
 
 Phase 13 — Warnings and Notifications is complete.
 
+Phase 14 — Enforcement is complete.
+
 Created:
 
 * `ControlTime.slnx`
@@ -120,11 +122,16 @@ Created:
 * `ControlTime.Core` `WarningThreshold` / `UsageWarning` (`Domain/`), `INotifier` (`Abstractions/`), `WarningEvaluator` and `WarningNotifier` (`Services/`): 15/5/1-minute warning thresholds with per-day dedup, independent of `RuleEngine`
 * `ControlTime.App` `BalloonTipNotifier` (`Services/`, hidden `NotifyIcon` + `ShowBalloonTip`), warning notifications wired to `MonitoringHost.StateChanged`; Dashboard now explains remaining time explicitly in the warning state
 
+* `docs/phases/phase-14.md`
+* `ControlTime.Core` `ISessionLock` (`Abstractions/`) and `EnforcementService` (`Services/`): edge-triggered session locking while `Blocked` with enabled rules, suspended during admin mode, re-lock per activity episode, retry on failure
+* `ControlTime.Infrastructure` `WindowsSessionLock` (`Windows/`, `LockWorkStation` P/Invoke with failure logging)
+* `ControlTime.App` enforcement wired to `MonitoringHost.StateChanged`; `CONTROLTIME_ENFORCEMENT=off` environment kill switch evaluated only in App composition
+
 Current phase:
 
-`Phase 14 — Enforcement` (not started)
+`Phase 15 — System Tray and Startup` (not started)
 
-Do not implement functionality belonging to Phase 14 or later.
+Do not implement functionality belonging to Phase 15 or later.
 
 ---
 

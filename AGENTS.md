@@ -52,6 +52,8 @@ Phase 11 — Automatic Usage Tracking is complete.
 
 Phase 12 — Background Monitoring is complete.
 
+Phase 13 — Warnings and Notifications is complete.
+
 Created:
 
 * `ControlTime.slnx`
@@ -114,11 +116,15 @@ Created:
 * `ControlTime.Infrastructure` all SQLite stores now take `IDbContextFactory<ControlTimeDbContext>` and open a short-lived context per operation (thread-safe background monitoring)
 * `ControlTime.App` `MonitoringHost` (`Services/`, replaces `UsageTrackingHost`): 1 s background loop (`Task.Run` + `PeriodicTimer`), publishes `MonitorState` to the UI via the captured `Dispatcher`; `DashboardViewModel` is now pure presentation (no timers, no direct activity probe)
 
+* `docs/phases/phase-13.md`
+* `ControlTime.Core` `WarningThreshold` / `UsageWarning` (`Domain/`), `INotifier` (`Abstractions/`), `WarningEvaluator` and `WarningNotifier` (`Services/`): 15/5/1-minute warning thresholds with per-day dedup, independent of `RuleEngine`
+* `ControlTime.App` `BalloonTipNotifier` (`Services/`, hidden `NotifyIcon` + `ShowBalloonTip`), warning notifications wired to `MonitoringHost.StateChanged`; Dashboard now explains remaining time explicitly in the warning state
+
 Current phase:
 
-`Phase 13 — Warnings and Notifications` (not started)
+`Phase 14 — Enforcement` (not started)
 
-Do not implement functionality belonging to Phase 13 or later.
+Do not implement functionality belonging to Phase 14 or later.
 
 ---
 

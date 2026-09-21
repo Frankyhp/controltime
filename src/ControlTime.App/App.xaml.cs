@@ -48,7 +48,25 @@ public partial class App : Application
             return;
         }
 
-        services.GetRequiredService<MonitoringHost>().Start();
+        MonitoringHost monitoringHost = services.GetRequiredService<MonitoringHost>();
+        WarningNotifier warningNotifier = services.GetRequiredService<WarningNotifier>();
+
+        ILogger<WarningNotifier> notifierLogger =
+            services.GetRequiredService<ILogger<WarningNotifier>>();
+
+        monitoringHost.StateChanged += state =>
+        {
+            try
+            {
+                warningNotifier.Process(state);
+            }
+            catch (Exception ex)
+            {
+                notifierLogger.LogError(ex, "No se pudo mostrar el aviso de tiempo restante.");
+            }
+        };
+
+        monitoringHost.Start();
 
         MainWindow = services.GetRequiredService<MainWindow>();
         MainWindow.Show();
@@ -94,6 +112,12 @@ public partial class App : Application
         services.AddSingleton<UsageTrackingService>();
         services.AddTransient<MonitoringService>();
         services.AddSingleton<MonitoringHost>();
+
+        services.AddSingleton<INotifier, BalloonTipNotifier>();
+        services.AddSingleton<WarningEvaluator>();
+        services.AddSingleton<WarningNotifier>(provider => new WarningNotifier(
+            provider.GetRequiredService<WarningEvaluator>(),
+            provider.GetRequiredService<INotifier>()));
 
         services.AddTransient<DashboardViewModel>();
         services.AddTransient<RulesViewModel>();

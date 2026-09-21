@@ -185,11 +185,14 @@ public sealed class DashboardViewModel : ObservableObject
             _ => ("Bloqueado", new SolidColorBrush(Color.FromRgb(0xB7, 0x1C, 0x1C))),
         };
 
-        ReasonText = snapshot.State == AccessState.Blocked
-            ? AccessReasonTranslator.Translate(snapshot.Reason)
-            : snapshot.State == AccessState.Warning
-                ? "Estás a punto de agotar el tiempo de uso de hoy."
-                : string.Empty;
+        ReasonText = snapshot.State switch
+        {
+            AccessState.Blocked => AccessReasonTranslator.Translate(snapshot.Reason),
+            AccessState.Warning when snapshot.RemainingTime is TimeSpan warningRemaining =>
+                $"Te quedan {FormatHoursMinutes(warningRemaining)} del tiempo permitido de hoy.",
+            AccessState.Warning => "Estás a punto de agotar el tiempo de uso de hoy.",
+            _ => string.Empty,
+        };
 
         NextAllowedText = snapshot.NextAllowedAt is DateTimeOffset next
             ? "Próximo acceso permitido: " +

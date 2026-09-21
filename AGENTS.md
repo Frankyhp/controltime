@@ -42,6 +42,8 @@ Phase 06 — Rules Management UI is complete.
 
 Phase 07 — Bonus Time / Time Grants is complete.
 
+Phase 08 — Dashboard Foundation is complete.
+
 Created:
 
 * `ControlTime.slnx`
@@ -79,12 +81,16 @@ Created:
 * `ControlTime.Core` `RuleEngine` bonus support: optional `bonusToday` raises each rule's daily limit during evaluation
 * `ControlTime.Infrastructure` time grant persistence (`TimeGrantEntity`, `AddTimeGrants` migration, `SqliteTimeGrantStore`)
 * `ControlTime.App` "Regalar tiempo" inline grant panel in the Rules screen (administrator password required for every grant)
+* `docs/phases/phase-08.md`
+* `ControlTime.Core` `DashboardSnapshot` (`Domain/`) and `DashboardService` (`Services/`): composes rules, today's grants and `RuleEngine` into a single dashboard snapshot
+* `ControlTime.App` Dashboard screen (`Views/DashboardView`, `ViewModels/DashboardViewModel`): access state, usage (simulated), configured limit, bonus today, effective allowance, remaining time, active schedule
+* `ControlTime.App` minimal navigation (`MainWindow` shell + `MainViewModel`: Dashboard / Reglas tabs)
 
 Current phase:
 
-`Phase 08 — Dashboard Foundation` (not started)
+`Phase 09 — Usage Sessions` (not started)
 
-Do not implement functionality belonging to Phase 08 or later.
+Do not implement functionality belonging to Phase 09 or later.
 
 ---
 

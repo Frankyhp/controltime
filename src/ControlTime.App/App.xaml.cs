@@ -1,5 +1,6 @@
 ﻿using System.Windows;
 using ControlTime.App.ViewModels;
+using ControlTime.Core;
 using ControlTime.Core.Abstractions;
 using ControlTime.Core.Services;
 using ControlTime.Infrastructure;
@@ -72,7 +73,15 @@ public partial class App : Application
             provider.GetRequiredService<IAppSettingsStore>(),
             provider.GetRequiredService<IPasswordHasher>()));
 
+        services.AddSingleton<RuleEngine>(_ => new RuleEngine());
+        services.AddTransient<DashboardService>(provider => new DashboardService(
+            provider.GetRequiredService<IUsageRuleStore>(),
+            provider.GetRequiredService<ITimeGrantStore>(),
+            provider.GetRequiredService<RuleEngine>()));
+
+        services.AddTransient<DashboardViewModel>();
         services.AddTransient<RulesViewModel>();
+        services.AddTransient<MainViewModel>();
         services.AddTransient<MainWindow>();
 
         return services.BuildServiceProvider();

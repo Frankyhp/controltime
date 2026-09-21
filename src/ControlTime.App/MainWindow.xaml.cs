@@ -8,7 +8,7 @@ namespace ControlTime.App;
 /// </summary>
 public partial class MainWindow : Window
 {
-    public MainWindow(RulesViewModel viewModel)
+    public MainWindow(MainViewModel viewModel)
     {
         ArgumentNullException.ThrowIfNull(viewModel);
 

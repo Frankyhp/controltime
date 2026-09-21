@@ -5,11 +5,13 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ControlTime.Infrastructure;
 
-public class SqliteTimeGrantStore(ControlTimeDbContext context) : ITimeGrantStore
+public class SqliteTimeGrantStore(IDbContextFactory<ControlTimeDbContext> factory) : ITimeGrantStore
 {
     public async Task AddAsync(TimeGrant grant, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(grant);
+
+        await using ControlTimeDbContext context = factory.CreateDbContext();
 
         context.TimeGrants.Add(new TimeGrantEntity
         {
@@ -28,6 +30,8 @@ public class SqliteTimeGrantStore(ControlTimeDbContext context) : ITimeGrantStor
     {
         var dayStartUtc = new DateTimeOffset(day.ToDateTime(TimeOnly.MinValue), utcOffset).UtcDateTime;
         var dayEndUtc = dayStartUtc.AddDays(1);
+
+        await using ControlTimeDbContext context = factory.CreateDbContext();
 
         var entities = await context.TimeGrants
             .AsNoTracking()

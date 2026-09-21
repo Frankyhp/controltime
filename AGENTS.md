@@ -50,6 +50,8 @@ Phase 10 — Windows Activity Detection is complete.
 
 Phase 11 — Automatic Usage Tracking is complete.
 
+Phase 12 — Background Monitoring is complete.
+
 Created:
 
 * `ControlTime.slnx`
@@ -107,11 +109,16 @@ Created:
 * `ControlTime.Core` `IUsageSessionStore` extended with `GetOpenSessionAsync` / `DeleteAsync` (implemented in `SqliteUsageSessionStore`)
 * `ControlTime.App` `UsageTrackingHost` (`Services/`): app-level ~5 s tracking loop started at startup; Dashboard usage is now fully real
 
+* `docs/phases/phase-12.md`
+* `ControlTime.Core` `MonitorState` (`Domain/`) and `MonitoringService` (`Services/`): one composed tick (activity probe → usage tracking → dashboard snapshot)
+* `ControlTime.Infrastructure` all SQLite stores now take `IDbContextFactory<ControlTimeDbContext>` and open a short-lived context per operation (thread-safe background monitoring)
+* `ControlTime.App` `MonitoringHost` (`Services/`, replaces `UsageTrackingHost`): 1 s background loop (`Task.Run` + `PeriodicTimer`), publishes `MonitorState` to the UI via the captured `Dispatcher`; `DashboardViewModel` is now pure presentation (no timers, no direct activity probe)
+
 Current phase:
 
-`Phase 12 — Background Monitoring` (not started)
+`Phase 13 — Warnings and Notifications` (not started)
 
-Do not implement functionality belonging to Phase 12 or later.
+Do not implement functionality belonging to Phase 13 or later.
 
 ---
 

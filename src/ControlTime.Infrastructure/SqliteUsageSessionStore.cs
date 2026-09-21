@@ -5,11 +5,13 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ControlTime.Infrastructure;
 
-public class SqliteUsageSessionStore(ControlTimeDbContext context) : IUsageSessionStore
+public class SqliteUsageSessionStore(IDbContextFactory<ControlTimeDbContext> factory) : IUsageSessionStore
 {
     public async Task AddAsync(UsageSession session, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(session);
+
+        await using ControlTimeDbContext context = factory.CreateDbContext();
 
         context.UsageSessions.Add(ToEntity(session));
 
@@ -19,6 +21,8 @@ public class SqliteUsageSessionStore(ControlTimeDbContext context) : IUsageSessi
     public async Task UpdateAsync(UsageSession session, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(session);
+
+        await using ControlTimeDbContext context = factory.CreateDbContext();
 
         UsageSessionEntity? entity = await context.UsageSessions
             .FirstOrDefaultAsync(e => e.Id == session.Id, cancellationToken);
@@ -47,6 +51,8 @@ public class SqliteUsageSessionStore(ControlTimeDbContext context) : IUsageSessi
         DateTime fromUtc = from.UtcDateTime;
         DateTime toUtc = to.UtcDateTime;
 
+        await using ControlTimeDbContext context = factory.CreateDbContext();
+
         var entities = await context.UsageSessions
             .AsNoTracking()
             .Where(s => s.StartedAtUtc < toUtc && (s.EndedAtUtc == null || s.EndedAtUtc > fromUtc))
@@ -64,6 +70,8 @@ public class SqliteUsageSessionStore(ControlTimeDbContext context) : IUsageSessi
 
     public async Task<UsageSession?> GetOpenSessionAsync(CancellationToken cancellationToken = default)
     {
+        await using ControlTimeDbContext context = factory.CreateDbContext();
+
         UsageSessionEntity? entity = await context.UsageSessions
             .AsNoTracking()
             .Where(s => s.EndedAtUtc == null)
@@ -75,6 +83,8 @@ public class SqliteUsageSessionStore(ControlTimeDbContext context) : IUsageSessi
 
     public async Task DeleteAsync(Guid id, CancellationToken cancellationToken = default)
     {
+        await using ControlTimeDbContext context = factory.CreateDbContext();
+
         UsageSessionEntity? entity = await context.UsageSessions
             .FirstOrDefaultAsync(e => e.Id == id, cancellationToken);
 

@@ -27,7 +27,11 @@ public partial class App : Application
 
         try
         {
-            services.GetRequiredService<ControlTimeDbContext>().Database.Migrate();
+            using ControlTimeDbContext context = services
+                .GetRequiredService<IDbContextFactory<ControlTimeDbContext>>()
+                .CreateDbContext();
+
+            context.Database.Migrate();
         }
         catch (Exception ex)
         {
@@ -44,7 +48,7 @@ public partial class App : Application
             return;
         }
 
-        services.GetRequiredService<UsageTrackingHost>().Start();
+        services.GetRequiredService<MonitoringHost>().Start();
 
         MainWindow = services.GetRequiredService<MainWindow>();
         MainWindow.Show();
@@ -64,10 +68,8 @@ public partial class App : Application
 
         ControlTimeStorage.EnsureDatabaseDirectory();
 
-        services.AddSingleton(_ => new ControlTimeDbContext(
-            new DbContextOptionsBuilder<ControlTimeDbContext>()
-                .UseSqlite(ControlTimeStorage.GetConnectionString())
-                .Options));
+        services.AddDbContextFactory<ControlTimeDbContext>(options =>
+            options.UseSqlite(ControlTimeStorage.GetConnectionString()));
 
         services.AddTransient<IUsageRuleStore, SqliteUsageRuleStore>();
         services.AddTransient<IAppSettingsStore, SqliteAppSettingsStore>();
@@ -90,7 +92,8 @@ public partial class App : Application
             provider.GetRequiredService<RuleEngine>()));
 
         services.AddSingleton<UsageTrackingService>();
-        services.AddSingleton<UsageTrackingHost>();
+        services.AddTransient<MonitoringService>();
+        services.AddSingleton<MonitoringHost>();
 
         services.AddTransient<DashboardViewModel>();
         services.AddTransient<RulesViewModel>();

@@ -1,11 +1,9 @@
 using System.Globalization;
 using System.Windows.Media;
-using System.Windows.Threading;
 using ControlTime.App.Mvvm;
 using ControlTime.App.Presentation;
-using ControlTime.Core.Abstractions;
+using ControlTime.App.Services;
 using ControlTime.Core.Domain;
-using ControlTime.Core.Services;
 
 namespace ControlTime.App.ViewModels;
 
@@ -13,12 +11,9 @@ public sealed class DashboardViewModel : ObservableObject
 {
     private static readonly CultureInfo SpanishCulture = CultureInfo.GetCultureInfo("es-ES");
 
-    private readonly DashboardService _dashboardService;
-    private readonly IActivityMonitor _activityMonitor;
-    private readonly DispatcherTimer _refreshTimer;
+    private readonly MonitoringHost _monitoringHost;
 
-    private bool _initialized;
-    private bool _refreshing;
+    private bool _subscribed;
     private string _stateText = "—";
     private Brush _stateBrush = Brushes.Gray;
     private string _reasonText = string.Empty;
@@ -33,23 +28,12 @@ public sealed class DashboardViewModel : ObservableObject
     private Brush _activityBrush = Brushes.Gray;
     private string _errorMessage = string.Empty;
 
-    public DashboardViewModel(
-        DashboardService dashboardService,
-        IActivityMonitor activityMonitor,
-        TimeProvider? timeProvider = null)
+    public DashboardViewModel(MonitoringHost monitoringHost)
     {
-        ArgumentNullException.ThrowIfNull(dashboardService);
-        ArgumentNullException.ThrowIfNull(activityMonitor);
+        ArgumentNullException.ThrowIfNull(monitoringHost);
 
-        _dashboardService = dashboardService;
-        _activityMonitor = activityMonitor;
-        TimeProvider = timeProvider ?? TimeProvider.System;
-
-        _refreshTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
-        _refreshTimer.Tick += async (_, _) => await RefreshAsync();
+        _monitoringHost = monitoringHost;
     }
-
-    private TimeProvider TimeProvider { get; }
 
     public string StateText
     {
@@ -137,71 +121,62 @@ public sealed class DashboardViewModel : ObservableObject
 
     public bool HasError => !string.IsNullOrEmpty(ErrorMessage);
 
-    public async Task InitializeAsync()
+    public void Initialize()
     {
-        _refreshTimer.Start();
+        if (!_subscribed)
+        {
+            _monitoringHost.StateChanged += OnStateChanged;
+            _monitoringHost.TickFailed += OnTickFailed;
+            _subscribed = true;
+        }
 
-        if (_initialized)
+        if (_monitoringHost.LastState is { } state)
+        {
+            Apply(state);
+        }
+    }
+
+    public void Stop()
+    {
+        if (!_subscribed)
         {
             return;
         }
 
-        _initialized = true;
-
-        await RefreshAsync();
+        _monitoringHost.StateChanged -= OnStateChanged;
+        _monitoringHost.TickFailed -= OnTickFailed;
+        _subscribed = false;
     }
 
-    public void Stop() => _refreshTimer.Stop();
-
-    private async Task RefreshAsync()
+    private void OnStateChanged(MonitorState state)
     {
-        if (_refreshing)
-        {
-            return;
-        }
-
-        _refreshing = true;
-
-        try
-        {
-            var offset = TimeProvider.GetLocalNow().Offset;
-            var snapshot = await _dashboardService.GetSnapshotAsync(offset);
-
-            Apply(snapshot);
-            ErrorMessage = string.Empty;
-        }
-        catch (Exception ex)
-        {
-            ErrorMessage = "No se pudo leer el estado: " + ex.Message;
-        }
-
-        RefreshActivity();
-
-        _refreshing = false;
+        Apply(state);
+        ErrorMessage = string.Empty;
     }
 
-    private void RefreshActivity()
+    private void OnTickFailed(Exception exception)
     {
-        try
-        {
-            ActivityStatus status = _activityMonitor.GetCurrentStatus();
-
-            ActivityText = ActivityStateTranslator.Translate(status.State);
-            ActivityBrush = status.State switch
-            {
-                ActivityState.Active => new SolidColorBrush(Color.FromRgb(0x1B, 0x5E, 0x20)),
-                ActivityState.Idle => new SolidColorBrush(Color.FromRgb(0xE6, 0x51, 0x00)),
-                _ => new SolidColorBrush(Color.FromRgb(0x5A, 0x6B, 0x80)),
-            };
-        }
-        catch (Exception)
-        {
-            ActivityText = "No disponible";
-            ActivityBrush = Brushes.Gray;
-        }
+        ErrorMessage = "No se pudo leer el estado: " + exception.Message;
     }
 
-    private void Apply(DashboardSnapshot snapshot)
+    private void Apply(MonitorState state)
+    {
+        ApplyActivity(state.Activity);
+        ApplySnapshot(state.Snapshot);
+    }
+
+    private void ApplyActivity(ActivityStatus status)
+    {
+        ActivityText = ActivityStateTranslator.Translate(status.State);
+        ActivityBrush = status.State switch
+        {
+            ActivityState.Active => new SolidColorBrush(Color.FromRgb(0x1B, 0x5E, 0x20)),
+            ActivityState.Idle => new SolidColorBrush(Color.FromRgb(0xE6, 0x51, 0x00)),
+            _ => new SolidColorBrush(Color.FromRgb(0x5A, 0x6B, 0x80)),
+        };
+    }
+
+    private void ApplySnapshot(DashboardSnapshot snapshot)
     {
         (StateText, StateBrush) = snapshot.State switch
         {

@@ -13,14 +13,12 @@ public sealed class UsageSessionPersistenceTests : IDisposable
             $"controltime-session-tests-{Guid.NewGuid():N}.db");
     }
 
-    private ControlTimeDbContext CreateContext()
-    {
-        var options = new DbContextOptionsBuilder<ControlTimeDbContext>()
-            .UseSqlite(ControlTimeStorage.GetConnectionString(_databasePath))
-            .Options;
+    private TestDbContextFactory CreateFactory() => new(_databasePath);
 
-        return new ControlTimeDbContext(options);
-    }
+    private async Task<IReadOnlyList<UsageSession>> GetDaySessionsAsync(TestDbContextFactory factory)
+        => await new SqliteUsageSessionStore(factory).GetSessionsOverlappingAsync(
+            new DateTimeOffset(2026, 6, 8, 0, 0, 0, TimeSpan.Zero),
+            new DateTimeOffset(2026, 6, 9, 0, 0, 0, TimeSpan.Zero));
 
     private static UsageSession Closed(
         DateTimeOffset startedAt,
@@ -38,22 +36,20 @@ public sealed class UsageSessionPersistenceTests : IDisposable
     [Fact]
     public async Task AddSession_RoundTripsOpenAndClosedFromNewContext()
     {
-        using var context = CreateContext();
-        await context.Database.MigrateAsync();
+        var factory = CreateFactory();
+        await using (var context = factory.CreateDbContext())
+        {
+            await context.Database.MigrateAsync();
+        }
 
         var closed = Closed(June(8, 9), June(8, 11));
-        UsageSession.TryCreateOpen(
-            new DateTimeOffset(2026, 6, 8, 15, 0, 0, TimeSpan.Zero),
-            out var open);
+        UsageSession.TryCreateOpen(June(8, 15), out var open);
 
-        var store = new SqliteUsageSessionStore(context);
+        var store = new SqliteUsageSessionStore(factory);
         await store.AddAsync(closed);
         await store.AddAsync(open!);
 
-        using var reader = CreateContext();
-        var stored = await new SqliteUsageSessionStore(reader).GetSessionsOverlappingAsync(
-            new DateTimeOffset(2026, 6, 8, 0, 0, 0, TimeSpan.Zero),
-            new DateTimeOffset(2026, 6, 9, 0, 0, 0, TimeSpan.Zero));
+        var stored = await GetDaySessionsAsync(factory);
 
         Assert.Multiple(
             () => Assert.Equal(2, stored.Count),
@@ -64,27 +60,23 @@ public sealed class UsageSessionPersistenceTests : IDisposable
     [Fact]
     public async Task UpdateSession_PersistsClose()
     {
-        using var context = CreateContext();
-        await context.Database.MigrateAsync();
+        var factory = CreateFactory();
+        await using (var context = factory.CreateDbContext())
+        {
+            await context.Database.MigrateAsync();
+        }
 
-        UsageSession.TryCreateOpen(
-            new DateTimeOffset(2026, 6, 8, 20, 0, 0, TimeSpan.Zero),
-            out var open);
+        UsageSession.TryCreateOpen(June(8, 20), out var open);
 
-        var store = new SqliteUsageSessionStore(context);
+        var store = new SqliteUsageSessionStore(factory);
         await store.AddAsync(open!);
 
-        var closeResult = open!.TryClose(
-            new DateTimeOffset(2026, 6, 8, 21, 15, 0, TimeSpan.Zero),
-            out var closed);
+        var closeResult = open!.TryClose(June(8, 21).AddMinutes(15), out var closed);
         Assert.True(closeResult.Success, closeResult.Error);
 
         await store.UpdateAsync(closed!);
 
-        using var reader = CreateContext();
-        var stored = await new SqliteUsageSessionStore(reader).GetSessionsOverlappingAsync(
-            new DateTimeOffset(2026, 6, 8, 0, 0, 0, TimeSpan.Zero),
-            new DateTimeOffset(2026, 6, 9, 0, 0, 0, TimeSpan.Zero));
+        var stored = await GetDaySessionsAsync(factory);
 
         var loaded = Assert.Single(stored);
         Assert.False(loaded.IsOpen);
@@ -94,10 +86,13 @@ public sealed class UsageSessionPersistenceTests : IDisposable
     [Fact]
     public async Task UpdateSession_UnknownId_Throws()
     {
-        using var context = CreateContext();
-        await context.Database.MigrateAsync();
+        var factory = CreateFactory();
+        await using (var context = factory.CreateDbContext())
+        {
+            await context.Database.MigrateAsync();
+        }
 
-        var store = new SqliteUsageSessionStore(context);
+        var store = new SqliteUsageSessionStore(factory);
 
         await Assert.ThrowsAsync<InvalidOperationException>(
             () => store.UpdateAsync(Closed(June(8, 9), June(8, 10))));
@@ -106,10 +101,13 @@ public sealed class UsageSessionPersistenceTests : IDisposable
     [Fact]
     public async Task GetSessionsOverlapping_IncludesSessionsStartedBeforeWindow()
     {
-        using var context = CreateContext();
-        await context.Database.MigrateAsync();
+        var factory = CreateFactory();
+        await using (var context = factory.CreateDbContext())
+        {
+            await context.Database.MigrateAsync();
+        }
 
-        var store = new SqliteUsageSessionStore(context);
+        var store = new SqliteUsageSessionStore(factory);
 
         var crossingMidnight = Closed(June(7, 23), June(8, 1));
         var inside = Closed(June(8, 9), June(8, 10));
@@ -121,10 +119,7 @@ public sealed class UsageSessionPersistenceTests : IDisposable
         await store.AddAsync(beforeWindow);
         await store.AddAsync(afterWindow);
 
-        using var reader = CreateContext();
-        var stored = await new SqliteUsageSessionStore(reader).GetSessionsOverlappingAsync(
-            new DateTimeOffset(2026, 6, 8, 0, 0, 0, TimeSpan.Zero),
-            new DateTimeOffset(2026, 6, 9, 0, 0, 0, TimeSpan.Zero));
+        var stored = await GetDaySessionsAsync(factory);
 
         Assert.Multiple(
             () => Assert.Equal(2, stored.Count),
@@ -135,16 +130,16 @@ public sealed class UsageSessionPersistenceTests : IDisposable
     [Fact]
     public async Task GetSessionsOverlapping_SessionEndingExactlyAtWindowStart_Excluded()
     {
-        using var context = CreateContext();
-        await context.Database.MigrateAsync();
+        var factory = CreateFactory();
+        await using (var context = factory.CreateDbContext())
+        {
+            await context.Database.MigrateAsync();
+        }
 
-        var store = new SqliteUsageSessionStore(context);
+        var store = new SqliteUsageSessionStore(factory);
         await store.AddAsync(Closed(June(7, 22), June(8, 0)));
 
-        using var reader = CreateContext();
-        var stored = await new SqliteUsageSessionStore(reader).GetSessionsOverlappingAsync(
-            new DateTimeOffset(2026, 6, 8, 0, 0, 0, TimeSpan.Zero),
-            new DateTimeOffset(2026, 6, 9, 0, 0, 0, TimeSpan.Zero));
+        var stored = await GetDaySessionsAsync(factory);
 
         Assert.Empty(stored);
     }
@@ -152,23 +147,28 @@ public sealed class UsageSessionPersistenceTests : IDisposable
     [Fact]
     public async Task GetOpenSession_NoOpenSessions_ReturnsNull()
     {
-        using var context = CreateContext();
-        await context.Database.MigrateAsync();
+        var factory = CreateFactory();
+        await using (var context = factory.CreateDbContext())
+        {
+            await context.Database.MigrateAsync();
+        }
 
-        var store = new SqliteUsageSessionStore(context);
+        var store = new SqliteUsageSessionStore(factory);
         await store.AddAsync(Closed(June(8, 9), June(8, 10)));
 
-        using var reader = CreateContext();
-        Assert.Null(await new SqliteUsageSessionStore(reader).GetOpenSessionAsync());
+        Assert.Null(await new SqliteUsageSessionStore(factory).GetOpenSessionAsync());
     }
 
     [Fact]
     public async Task GetOpenSession_ReturnsLatestOpenSession()
     {
-        using var context = CreateContext();
-        await context.Database.MigrateAsync();
+        var factory = CreateFactory();
+        await using (var context = factory.CreateDbContext())
+        {
+            await context.Database.MigrateAsync();
+        }
 
-        var store = new SqliteUsageSessionStore(context);
+        var store = new SqliteUsageSessionStore(factory);
 
         UsageSession.TryCreateOpen(June(8, 9), out var earlier);
         UsageSession.TryCreateOpen(June(8, 14), out var later);
@@ -177,8 +177,7 @@ public sealed class UsageSessionPersistenceTests : IDisposable
         await store.AddAsync(earlier!);
         await store.AddAsync(later!);
 
-        using var reader = CreateContext();
-        var open = await new SqliteUsageSessionStore(reader).GetOpenSessionAsync();
+        var open = await new SqliteUsageSessionStore(factory).GetOpenSessionAsync();
 
         Assert.Equal(later!.Id, open!.Id);
     }
@@ -186,17 +185,19 @@ public sealed class UsageSessionPersistenceTests : IDisposable
     [Fact]
     public async Task DeleteSession_RemovesSessionAndUnknownIdThrows()
     {
-        using var context = CreateContext();
-        await context.Database.MigrateAsync();
+        var factory = CreateFactory();
+        await using (var context = factory.CreateDbContext())
+        {
+            await context.Database.MigrateAsync();
+        }
 
         UsageSession.TryCreateOpen(June(8, 9), out var open);
 
-        var store = new SqliteUsageSessionStore(context);
+        var store = new SqliteUsageSessionStore(factory);
         await store.AddAsync(open!);
         await store.DeleteAsync(open!.Id);
 
-        using var reader = CreateContext();
-        var readerStore = new SqliteUsageSessionStore(reader);
+        var readerStore = new SqliteUsageSessionStore(factory);
 
         Assert.Null(await readerStore.GetOpenSessionAsync());
         await Assert.ThrowsAsync<InvalidOperationException>(

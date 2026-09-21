@@ -1,0 +1,32 @@
+using ControlTime.Core.Abstractions;
+using ControlTime.Core.Domain;
+
+namespace ControlTime.Core.Services;
+
+public sealed class MonitoringService(
+    IActivityMonitor activityMonitor,
+    UsageTrackingService trackingService,
+    DashboardService dashboardService)
+{
+    private readonly IActivityMonitor _activityMonitor = activityMonitor
+        ?? throw new ArgumentNullException(nameof(activityMonitor));
+    private readonly UsageTrackingService _trackingService = trackingService
+        ?? throw new ArgumentNullException(nameof(trackingService));
+    private readonly DashboardService _dashboardService = dashboardService
+        ?? throw new ArgumentNullException(nameof(dashboardService));
+
+    public async Task<MonitorState> TickAsync(
+        TimeSpan utcOffset,
+        CancellationToken cancellationToken = default)
+    {
+        ActivityStatus status = _activityMonitor.GetCurrentStatus();
+
+        await _trackingService.TickAsync(status, cancellationToken);
+
+        DashboardSnapshot snapshot = await _dashboardService.GetSnapshotAsync(
+            utcOffset,
+            cancellationToken);
+
+        return new MonitorState(status, snapshot);
+    }
+}

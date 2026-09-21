@@ -13,14 +13,7 @@ public sealed class PersistenceIntegrationTests : IDisposable
             $"controltime-tests-{Guid.NewGuid():N}.db");
     }
 
-    private ControlTimeDbContext CreateContext()
-    {
-        var options = new DbContextOptionsBuilder<ControlTimeDbContext>()
-            .UseSqlite(ControlTimeStorage.GetConnectionString(_databasePath))
-            .Options;
-
-        return new ControlTimeDbContext(options);
-    }
+    private TestDbContextFactory CreateFactory() => new(_databasePath);
 
     private static UsageRule CreateRule(
         string name = "Weekday rule",
@@ -51,15 +44,16 @@ public sealed class PersistenceIntegrationTests : IDisposable
     [Fact]
     public async Task AddRule_ReloadFromNewContext_PreservesAllFields()
     {
-        using var context = CreateContext();
-        await context.Database.MigrateAsync();
+        var factory = CreateFactory();
+        await using (var context = factory.CreateDbContext())
+        {
+            await context.Database.MigrateAsync();
+        }
 
         var rule = CreateRule();
-        var store = new SqliteUsageRuleStore(context);
-        await store.AddAsync(rule);
+        await new SqliteUsageRuleStore(factory).AddAsync(rule);
 
-        using var reader = CreateContext();
-        var stored = await new SqliteUsageRuleStore(reader).GetAllAsync();
+        var stored = await new SqliteUsageRuleStore(factory).GetAllAsync();
 
         var loaded = Assert.Single(stored);
         Assert.Equal(rule.Id, loaded.Id);
@@ -74,13 +68,15 @@ public sealed class PersistenceIntegrationTests : IDisposable
     [Fact]
     public async Task AddRule_WithoutDailyLimit_RoundTripsAsUnlimited()
     {
-        using var context = CreateContext();
-        await context.Database.MigrateAsync();
+        var factory = CreateFactory();
+        await using (var context = factory.CreateDbContext())
+        {
+            await context.Database.MigrateAsync();
+        }
 
-        await new SqliteUsageRuleStore(context).AddAsync(CreateRule(limitMinutes: null));
+        await new SqliteUsageRuleStore(factory).AddAsync(CreateRule(limitMinutes: null));
 
-        using var reader = CreateContext();
-        var stored = await new SqliteUsageRuleStore(reader).GetAllAsync();
+        var stored = await new SqliteUsageRuleStore(factory).GetAllAsync();
 
         var loaded = Assert.Single(stored);
         Assert.Null(loaded.DailyLimit);
@@ -89,11 +85,14 @@ public sealed class PersistenceIntegrationTests : IDisposable
     [Fact]
     public async Task UpdateRule_ChangesArePersisted()
     {
-        using var context = CreateContext();
-        await context.Database.MigrateAsync();
+        var factory = CreateFactory();
+        await using (var context = factory.CreateDbContext())
+        {
+            await context.Database.MigrateAsync();
+        }
 
         var rule = CreateRule();
-        await new SqliteUsageRuleStore(context).AddAsync(rule);
+        await new SqliteUsageRuleStore(factory).AddAsync(rule);
 
         var updateResult = UsageRule.TryCreate(
             rule.Id,
@@ -105,10 +104,9 @@ public sealed class PersistenceIntegrationTests : IDisposable
             out var updated);
         Assert.True(updateResult.Success, updateResult.Error);
 
-        await new SqliteUsageRuleStore(context).UpdateAsync(updated!);
+        await new SqliteUsageRuleStore(factory).UpdateAsync(updated!);
 
-        using var reader = CreateContext();
-        var stored = await new SqliteUsageRuleStore(reader).GetAllAsync();
+        var stored = await new SqliteUsageRuleStore(factory).GetAllAsync();
 
         var loaded = Assert.Single(stored);
         Assert.Equal("Renamed rule", loaded.Name);
@@ -120,43 +118,50 @@ public sealed class PersistenceIntegrationTests : IDisposable
     [Fact]
     public async Task RemoveRule_PersistsDeletion()
     {
-        using var context = CreateContext();
-        await context.Database.MigrateAsync();
+        var factory = CreateFactory();
+        await using (var context = factory.CreateDbContext())
+        {
+            await context.Database.MigrateAsync();
+        }
 
         var rule = CreateRule();
-        var store = new SqliteUsageRuleStore(context);
+        var store = new SqliteUsageRuleStore(factory);
         await store.AddAsync(rule);
 
         Assert.True(await store.RemoveAsync(rule.Id));
         Assert.False(await store.RemoveAsync(rule.Id));
 
-        using var reader = CreateContext();
-        Assert.Empty(await new SqliteUsageRuleStore(reader).GetAllAsync());
+        Assert.Empty(await new SqliteUsageRuleStore(factory).GetAllAsync());
     }
 
     [Fact]
     public async Task AppSettings_SetThenGetFromNewContext_ReturnsValue()
     {
-        using var context = CreateContext();
-        await context.Database.MigrateAsync();
+        var factory = CreateFactory();
+        await using (var context = factory.CreateDbContext())
+        {
+            await context.Database.MigrateAsync();
+        }
 
-        var store = new SqliteAppSettingsStore(context);
+        var store = new SqliteAppSettingsStore(factory);
 
         Assert.Null(await store.GetAsync("missing.key"));
 
         await store.SetAsync("sample.key", "value-1");
 
-        using var reader = CreateContext();
-        Assert.Equal("value-1", await new SqliteAppSettingsStore(reader).GetAsync("sample.key"));
+        Assert.Equal("value-1", await new SqliteAppSettingsStore(factory).GetAsync("sample.key"));
     }
 
     [Fact]
     public async Task AppSettings_SetTwice_UpdatesExistingValue()
     {
-        using var context = CreateContext();
-        await context.Database.MigrateAsync();
+        var factory = CreateFactory();
+        await using (var context = factory.CreateDbContext())
+        {
+            await context.Database.MigrateAsync();
+        }
 
-        var store = new SqliteAppSettingsStore(context);
+        var store = new SqliteAppSettingsStore(factory);
         await store.SetAsync("sample.key", "value-1");
         await store.SetAsync("sample.key", "value-2");
 
@@ -166,14 +171,20 @@ public sealed class PersistenceIntegrationTests : IDisposable
     [Fact]
     public async Task AdminPassword_SetThenVerifyFromNewContext_SucceedsWithoutStoringPlainText()
     {
-        using var context = CreateContext();
-        await context.Database.MigrateAsync();
+        var factory = CreateFactory();
+        await using (var context = factory.CreateDbContext())
+        {
+            await context.Database.MigrateAsync();
+        }
 
-        var service = new AdminAuthService(new SqliteAppSettingsStore(context), new Pbkdf2PasswordHasher());
+        var service = new AdminAuthService(
+            new SqliteAppSettingsStore(factory),
+            new Pbkdf2PasswordHasher());
         Assert.Equal(AdminPasswordResult.Success, await service.SetPasswordAsync("sqlite-admin-pass"));
 
-        using var reader = CreateContext();
-        var reloaded = new AdminAuthService(new SqliteAppSettingsStore(reader), new Pbkdf2PasswordHasher());
+        var reloaded = new AdminAuthService(
+            new SqliteAppSettingsStore(factory),
+            new Pbkdf2PasswordHasher());
 
         Assert.True(await reloaded.HasPasswordAsync());
         Assert.Equal(AdminAuthenticationResult.Success,
@@ -181,7 +192,7 @@ public sealed class PersistenceIntegrationTests : IDisposable
         Assert.Equal(AdminAuthenticationResult.InvalidPassword,
             await reloaded.TryEnterAdminModeAsync("wrong-password"));
 
-        var storedHash = await new SqliteAppSettingsStore(reader)
+        var storedHash = await new SqliteAppSettingsStore(factory)
             .GetAsync(AdminAuthService.PasswordHashSettingKey);
         Assert.NotNull(storedHash);
         Assert.DoesNotContain("sqlite-admin-pass", storedHash);

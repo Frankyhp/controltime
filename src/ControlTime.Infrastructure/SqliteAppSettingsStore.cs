@@ -4,10 +4,12 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ControlTime.Infrastructure;
 
-public class SqliteAppSettingsStore(ControlTimeDbContext context) : IAppSettingsStore
+public class SqliteAppSettingsStore(IDbContextFactory<ControlTimeDbContext> factory) : IAppSettingsStore
 {
     public async Task<string?> GetAsync(string key, CancellationToken cancellationToken = default)
     {
+        await using ControlTimeDbContext context = factory.CreateDbContext();
+
         var entity = await context.AppSettings
             .AsNoTracking()
             .SingleOrDefaultAsync(s => s.Key == key, cancellationToken);
@@ -19,6 +21,8 @@ public class SqliteAppSettingsStore(ControlTimeDbContext context) : IAppSettings
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(key);
         ArgumentNullException.ThrowIfNull(value);
+
+        await using ControlTimeDbContext context = factory.CreateDbContext();
 
         var entity = await context.AppSettings.FindAsync([key], cancellationToken);
 

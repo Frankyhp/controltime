@@ -13,11 +13,11 @@ public partial class DashboardView : UserControl
 
     private DashboardViewModel? ViewModel => DataContext as DashboardViewModel;
 
-    private async void OnLoaded(object sender, RoutedEventArgs e)
+    private void OnLoaded(object sender, RoutedEventArgs e)
     {
         if (ViewModel is { } viewModel)
         {
-            await viewModel.InitializeAsync();
+            viewModel.Initialize();
         }
     }
 

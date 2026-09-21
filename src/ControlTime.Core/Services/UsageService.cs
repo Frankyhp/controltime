@@ -22,12 +22,13 @@ public sealed class UsageService
         DateTimeOffset now = _timeProvider.GetUtcNow();
         DateOnly today = DateOnly.FromDateTime(now.ToOffset(utcOffset).DateTime);
 
-        return await GetUsageForDayAsync(today, utcOffset, cancellationToken);
+        return await GetUsageForDayAsync(today, utcOffset, now, cancellationToken);
     }
 
     public async Task<TimeSpan> GetUsageForDayAsync(
         DateOnly day,
         TimeSpan utcOffset,
+        DateTimeOffset? asOf = null,
         CancellationToken cancellationToken = default)
     {
         DateTimeOffset dayStartUtc = new(day.ToDateTime(TimeOnly.MinValue), utcOffset);
@@ -38,6 +39,6 @@ public sealed class UsageService
             dayEndUtc,
             cancellationToken);
 
-        return UsageCalculator.GetUsageForDay(sessions, dayStartUtc, dayEndUtc);
+        return UsageCalculator.GetUsageForDay(sessions, dayStartUtc, dayEndUtc, asOf);
     }
 }

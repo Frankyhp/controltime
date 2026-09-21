@@ -256,7 +256,11 @@ public class DashboardServiceTests
         }
 
         public Task UpdateAsync(UsageSession session, CancellationToken cancellationToken = default)
-            => Task.CompletedTask;
+        {
+            _sessions.RemoveAll(s => s.Id == session.Id);
+            _sessions.Add(session);
+            return Task.CompletedTask;
+        }
 
         public Task<IReadOnlyList<UsageSession>> GetSessionsOverlappingAsync(
             DateTimeOffset from,
@@ -268,6 +272,15 @@ public class DashboardServiceTests
                 .ToList();
 
             return Task.FromResult<IReadOnlyList<UsageSession>>(matches);
+        }
+
+        public Task<UsageSession?> GetOpenSessionAsync(CancellationToken cancellationToken = default)
+            => Task.FromResult(_sessions.LastOrDefault(s => s.IsOpen));
+
+        public Task DeleteAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            _sessions.RemoveAll(s => s.Id == id);
+            return Task.CompletedTask;
         }
     }
 }

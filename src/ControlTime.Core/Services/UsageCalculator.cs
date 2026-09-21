@@ -7,7 +7,8 @@ public static class UsageCalculator
     public static TimeSpan GetUsageForDay(
         IReadOnlyCollection<UsageSession> sessions,
         DateTimeOffset dayStartUtc,
-        DateTimeOffset dayEndUtc)
+        DateTimeOffset dayEndUtc,
+        DateTimeOffset? asOf = null)
     {
         ArgumentNullException.ThrowIfNull(sessions);
 
@@ -20,7 +21,16 @@ public static class UsageCalculator
 
         foreach (UsageSession session in sessions)
         {
-            if (session.EndedAt is not DateTimeOffset endedAt)
+            DateTimeOffset endedAt;
+            if (session.EndedAt is DateTimeOffset closed)
+            {
+                endedAt = closed;
+            }
+            else if (asOf is DateTimeOffset moment)
+            {
+                endedAt = moment;
+            }
+            else
             {
                 continue;
             }

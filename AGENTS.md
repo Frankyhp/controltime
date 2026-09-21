@@ -46,6 +46,10 @@ Phase 08 — Dashboard Foundation is complete.
 
 Phase 09 — Usage Sessions is complete.
 
+Phase 10 — Windows Activity Detection is complete.
+
+Phase 11 — Automatic Usage Tracking is complete.
+
 Created:
 
 * `ControlTime.slnx`
@@ -97,11 +101,17 @@ Created:
 * `ControlTime.Infrastructure` Windows activity detection (`Windows/`: `LastInputInfo`, `SessionLockProbe`, `WindowsActivityMonitor`, pure P/Invoke polling)
 * `ControlTime.App` Dashboard "Actividad" card (Activo / Ocioso / Bloqueado, refreshed ~1 s)
 
+* `docs/phases/phase-11.md`
+* `ControlTime.Core` `UsageTrackingService` (`Services/`): activity-driven open/close of usage sessions with orphan adoption
+* `ControlTime.Core` `UsageCalculator`/`UsageService` `asOf` support: open sessions count toward daily usage up to now
+* `ControlTime.Core` `IUsageSessionStore` extended with `GetOpenSessionAsync` / `DeleteAsync` (implemented in `SqliteUsageSessionStore`)
+* `ControlTime.App` `UsageTrackingHost` (`Services/`): app-level ~5 s tracking loop started at startup; Dashboard usage is now fully real
+
 Current phase:
 
-`Phase 11 — Automatic Usage Tracking` (not started)
+`Phase 12 — Background Monitoring` (not started)
 
-Do not implement functionality belonging to Phase 11 or later.
+Do not implement functionality belonging to Phase 12 or later.
 
 ---
 

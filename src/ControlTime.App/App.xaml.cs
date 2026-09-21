@@ -1,4 +1,5 @@
 ﻿using System.Windows;
+using ControlTime.App.Services;
 using ControlTime.App.ViewModels;
 using ControlTime.Core;
 using ControlTime.Core.Abstractions;
@@ -43,6 +44,8 @@ public partial class App : Application
             return;
         }
 
+        services.GetRequiredService<UsageTrackingHost>().Start();
+
         MainWindow = services.GetRequiredService<MainWindow>();
         MainWindow.Show();
     }
@@ -85,6 +88,9 @@ public partial class App : Application
             provider.GetRequiredService<ITimeGrantStore>(),
             provider.GetRequiredService<UsageService>(),
             provider.GetRequiredService<RuleEngine>()));
+
+        services.AddSingleton<UsageTrackingService>();
+        services.AddSingleton<UsageTrackingHost>();
 
         services.AddTransient<DashboardViewModel>();
         services.AddTransient<RulesViewModel>();

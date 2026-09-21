@@ -12,4 +12,8 @@ public interface IUsageSessionStore
         DateTimeOffset from,
         DateTimeOffset to,
         CancellationToken cancellationToken = default);
+
+    Task<UsageSession?> GetOpenSessionAsync(CancellationToken cancellationToken = default);
+
+    Task DeleteAsync(Guid id, CancellationToken cancellationToken = default);
 }

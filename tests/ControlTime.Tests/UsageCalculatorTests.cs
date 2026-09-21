@@ -125,4 +125,62 @@ public class UsageCalculatorTests
         Assert.Throws<ArgumentOutOfRangeException>(() =>
             UsageCalculator.GetUsageForDay([], MondayEnd, MondayStart));
     }
+
+    [Fact]
+    public void GetUsageForDay_OpenSessionWithAsOf_CountsUpToAsOf()
+    {
+        UsageSession.TryCreateOpen(Monday(9, 0), out var open);
+
+        var usage = UsageCalculator.GetUsageForDay(
+            [open!], MondayStart, MondayEnd, asOf: Monday(10, 0));
+
+        Assert.Equal(TimeSpan.FromHours(1), usage);
+    }
+
+    [Fact]
+    public void GetUsageForDay_OpenSessionAsOfBeyondWindow_ClampedToWindow()
+    {
+        UsageSession.TryCreateOpen(Monday(23, 30), out var open);
+
+        var usage = UsageCalculator.GetUsageForDay(
+            [open!], MondayStart, MondayEnd, asOf: MondayEnd.AddMinutes(30));
+
+        Assert.Equal(TimeSpan.FromMinutes(30), usage);
+    }
+
+    [Fact]
+    public void GetUsageForDay_OpenSessionCrossingMidnight_SplitsAcrossBothDays()
+    {
+        UsageSession.TryCreateOpen(Monday(23, 30), out var open);
+        var asOf = MondayEnd.AddMinutes(30);
+
+        var mondayUsage = UsageCalculator.GetUsageForDay([open!], MondayStart, MondayEnd, asOf);
+        var tuesdayUsage = UsageCalculator.GetUsageForDay(
+            [open!], MondayEnd, MondayEnd.AddDays(1), asOf);
+
+        Assert.Equal(TimeSpan.FromMinutes(30), mondayUsage);
+        Assert.Equal(TimeSpan.FromMinutes(30), tuesdayUsage);
+    }
+
+    [Fact]
+    public void GetUsageForDay_AsOfBeforeOpenStart_ReturnsZero()
+    {
+        UsageSession.TryCreateOpen(Monday(12, 0), out var open);
+
+        var usage = UsageCalculator.GetUsageForDay(
+            [open!], MondayStart, MondayEnd, asOf: Monday(11, 0));
+
+        Assert.Equal(TimeSpan.Zero, usage);
+    }
+
+    [Fact]
+    public void GetUsageForDay_ClosedAndOpenSessions_SummedWithAsOf()
+    {
+        UsageSession.TryCreateOpen(Monday(11, 0), out var open);
+
+        var usage = UsageCalculator.GetUsageForDay(
+            [Session(9, 0, 10, 0), open!], MondayStart, MondayEnd, asOf: Monday(11, 30));
+
+        Assert.Equal(TimeSpan.FromMinutes(90), usage);
+    }
 }

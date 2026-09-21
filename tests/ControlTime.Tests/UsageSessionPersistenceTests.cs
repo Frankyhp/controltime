@@ -149,6 +149,60 @@ public sealed class UsageSessionPersistenceTests : IDisposable
         Assert.Empty(stored);
     }
 
+    [Fact]
+    public async Task GetOpenSession_NoOpenSessions_ReturnsNull()
+    {
+        using var context = CreateContext();
+        await context.Database.MigrateAsync();
+
+        var store = new SqliteUsageSessionStore(context);
+        await store.AddAsync(Closed(June(8, 9), June(8, 10)));
+
+        using var reader = CreateContext();
+        Assert.Null(await new SqliteUsageSessionStore(reader).GetOpenSessionAsync());
+    }
+
+    [Fact]
+    public async Task GetOpenSession_ReturnsLatestOpenSession()
+    {
+        using var context = CreateContext();
+        await context.Database.MigrateAsync();
+
+        var store = new SqliteUsageSessionStore(context);
+
+        UsageSession.TryCreateOpen(June(8, 9), out var earlier);
+        UsageSession.TryCreateOpen(June(8, 14), out var later);
+
+        await store.AddAsync(Closed(June(8, 7), June(8, 8)));
+        await store.AddAsync(earlier!);
+        await store.AddAsync(later!);
+
+        using var reader = CreateContext();
+        var open = await new SqliteUsageSessionStore(reader).GetOpenSessionAsync();
+
+        Assert.Equal(later!.Id, open!.Id);
+    }
+
+    [Fact]
+    public async Task DeleteSession_RemovesSessionAndUnknownIdThrows()
+    {
+        using var context = CreateContext();
+        await context.Database.MigrateAsync();
+
+        UsageSession.TryCreateOpen(June(8, 9), out var open);
+
+        var store = new SqliteUsageSessionStore(context);
+        await store.AddAsync(open!);
+        await store.DeleteAsync(open!.Id);
+
+        using var reader = CreateContext();
+        var readerStore = new SqliteUsageSessionStore(reader);
+
+        Assert.Null(await readerStore.GetOpenSessionAsync());
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => readerStore.DeleteAsync(open.Id));
+    }
+
     public void Dispose()
     {
         SqliteConnection.ClearAllPools();

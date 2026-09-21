@@ -62,6 +62,32 @@ public class SqliteUsageSessionStore(ControlTimeDbContext context) : IUsageSessi
         return sessions;
     }
 
+    public async Task<UsageSession?> GetOpenSessionAsync(CancellationToken cancellationToken = default)
+    {
+        UsageSessionEntity? entity = await context.UsageSessions
+            .AsNoTracking()
+            .Where(s => s.EndedAtUtc == null)
+            .OrderByDescending(s => s.StartedAtUtc)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        return entity is null ? null : ToDomain(entity);
+    }
+
+    public async Task DeleteAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        UsageSessionEntity? entity = await context.UsageSessions
+            .FirstOrDefaultAsync(e => e.Id == id, cancellationToken);
+
+        if (entity is null)
+        {
+            throw new InvalidOperationException($"Usage session '{id}' does not exist.");
+        }
+
+        context.UsageSessions.Remove(entity);
+
+        await context.SaveChangesAsync(cancellationToken);
+    }
+
     private static UsageSessionEntity ToEntity(UsageSession session) => new()
     {
         Id = session.Id,

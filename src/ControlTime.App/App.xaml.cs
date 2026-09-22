@@ -31,6 +31,8 @@ public partial class App : Application
 
         try
         {
+            ControlTimeStorage.MigrateLegacyDatabase();
+
             using ControlTimeDbContext context = services
                 .GetRequiredService<IDbContextFactory<ControlTimeDbContext>>()
                 .CreateDbContext();
@@ -72,34 +74,8 @@ public partial class App : Application
             }
         };
 
-        if (IsEnforcementEnabled())
-        {
-            EnforcementService enforcementService = services.GetRequiredService<EnforcementService>();
-
-            ILogger<EnforcementService> enforcementLogger =
-                services.GetRequiredService<ILogger<EnforcementService>>();
-
-            monitoringHost.StateChanged += state =>
-            {
-                try
-                {
-                    enforcementService.Process(state);
-                }
-                catch (Exception ex)
-                {
-                    enforcementLogger.LogError(ex, "El bloqueo de seguridad no pudo evaluarse.");
-                }
-            };
-        }
-        else
-        {
-            services.GetRequiredService<ILoggerFactory>()
-                .CreateLogger(nameof(App))
-                .LogWarning(
-                    "El bloqueo de sesión está desactivado por la variable de entorno " +
-                    "{Variable}.",
-                    EnforcementDisabledVariable);
-        }
+        // Desde la fase 17a el tracking de uso y el enforcement viven en
+        // ControlTime.Service (Windows Service). La App solo presenta estado.
 
         TrayIconService trayIcon = services.GetRequiredService<TrayIconService>();
 
@@ -203,17 +179,15 @@ public partial class App : Application
             provider.GetRequiredService<UsageService>(),
             provider.GetRequiredService<RuleEngine>()));
 
-        services.AddSingleton<UsageTrackingService>();
-        services.AddTransient<MonitoringService>();
+        services.AddTransient<MonitoringService>(provider => new MonitoringService(
+            provider.GetRequiredService<IActivityMonitor>(),
+            provider.GetRequiredService<DashboardService>()));
         services.AddSingleton<MonitoringHost>();
 
         services.AddSingleton<WarningEvaluator>();
         services.AddSingleton<WarningNotifier>(provider => new WarningNotifier(
             provider.GetRequiredService<WarningEvaluator>(),
             provider.GetRequiredService<INotifier>()));
-
-        services.AddSingleton<ISessionLock, WindowsSessionLock>();
-        services.AddSingleton<EnforcementService>();
 
         services.AddSingleton<IAutostartRegistrar, WindowsAutoStartRegistry>();
         services.AddSingleton<TrayIconService>(provider => new TrayIconService(

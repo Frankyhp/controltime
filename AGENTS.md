@@ -142,11 +142,22 @@ Created:
 * `ControlTime.App` controlled exit: tray "Salir" now requires the administrator password via `Views/AdminExitWindow` (`VerifyPasswordAsync`, never enters admin mode)
 * `ControlTime.App` tray menu no longer contains the autostart toggle; startup preference sync on startup unchanged
 
+* `docs/phases/phase-17a.md`
+* `ControlTime.Service` project (`src/ControlTime.Service`, Windows Worker Service, added to the solution): owns the 1 s monitoring loop (activity → usage tracking → dashboard snapshot → enforcement) independent of the UI; `Program.cs` composition + `MonitoringLoop` hosted service; kill switch `CONTROLTIME_ENFORCEMENT=off` now authoritative in the Service environment
+* `ControlTime.Infrastructure` machine-wide database: default location `%PROGRAMDATA%\ControlTime` + `ControlTimeStorage.MigrateLegacyDatabase()` (one-time move of the legacy `%APPDATA%` database, race-tolerant; run by both App and Service)
+* `ControlTime.Infrastructure` `Windows/`: `WtsApi` (`WTSGetActiveConsoleSessionId` / `WTSEnumerateSessionsW` / `WTSDisconnectSession`), `WtsConsoleSessionMonitor : IActivityMonitor` (console session Active/Connected → Active; anything else or failure → Locked), `WtsSessionLock : ISessionLock` (disconnects the active console session, never throws)
+* `ControlTime.Core` `MonitoringService`: `UsageTrackingService` now optional (App composes display-only ticks without tracking)
+* `ControlTime.App` no longer performs usage-session writes or enforcement; `ControlTime.Service` is the sole usage-session writer and enforcer (manual `sc create` registration until the Phase 21 installer)
+
+Phase 17 was split into `Phase 17a — Windows Service Foundation` and `Phase 17b — Service IPC and App Client`.
+
+Phase 17a — Windows Service Foundation is complete.
+
 Current phase:
 
-`Phase 17 — Windows Service Architecture` (not started)
+`Phase 17b — Service IPC and App Client` (planned, not started)
 
-Do not implement functionality belonging to Phase 17 or later.
+Do not implement functionality belonging to Phase 17b or later.
 
 ---
 
@@ -193,7 +204,8 @@ ControlTime/
 ├── src/
 │   ├── ControlTime.App/
 │   ├── ControlTime.Core/
-│   └── ControlTime.Infrastructure/
+│   ├── ControlTime.Infrastructure/
+│   └── ControlTime.Service/
 │
 └── tests/
     └── ControlTime.Tests/

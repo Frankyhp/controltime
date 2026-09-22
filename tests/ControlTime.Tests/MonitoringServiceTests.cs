@@ -44,15 +44,17 @@ public class MonitoringServiceTests
 
             TimeProvider = new FixedTimeProvider(now);
 
+            DashboardService = new DashboardService(
+                RuleStore,
+                GrantStore,
+                new UsageService(SessionStore, TimeProvider),
+                new RuleEngine(),
+                TimeProvider);
+
             Service = new MonitoringService(
                 Monitor,
-                new UsageTrackingService(SessionStore),
-                new DashboardService(
-                    RuleStore,
-                    GrantStore,
-                    new UsageService(SessionStore, TimeProvider),
-                    new RuleEngine(),
-                    TimeProvider));
+                DashboardService,
+                new UsageTrackingService(SessionStore));
         }
 
         public FixedTimeProvider TimeProvider { get; }
@@ -65,7 +67,26 @@ public class MonitoringServiceTests
 
         public FakeActivityMonitor Monitor { get; }
 
+        public DashboardService DashboardService { get; }
+
         public MonitoringService Service { get; }
+    }
+
+    [Fact]
+    public async Task Tick_WithoutTrackingService_ReturnsSnapshotWithoutWritingSessions()
+    {
+        var fixture = new Fixture(At(12), CreateRule());
+        fixture.Monitor.SetStatus(Status(ActivityState.Active, At(12), At(12)));
+
+        var serviceWithoutTracking = new MonitoringService(
+            fixture.Monitor,
+            fixture.DashboardService);
+
+        var state = await serviceWithoutTracking.TickAsync(Utc);
+
+        Assert.Equal(ActivityState.Active, state.Activity.State);
+        Assert.Equal(AccessState.Allowed, state.Snapshot.State);
+        Assert.Empty(fixture.SessionStore.Sessions);
     }
 
     [Fact]

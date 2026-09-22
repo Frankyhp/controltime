@@ -3,6 +3,7 @@
     <Project Path="src/ControlTime.App/ControlTime.App.csproj" />
     <Project Path="src/ControlTime.Core/ControlTime.Core.csproj" />
     <Project Path="src/ControlTime.Infrastructure/ControlTime.Infrastructure.csproj" />
+    <Project Path="src/ControlTime.Service/ControlTime.Service.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/ControlTime.Tests/ControlTime.Tests.csproj" />

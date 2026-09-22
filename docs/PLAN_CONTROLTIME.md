@@ -826,28 +826,86 @@ Do not claim protection against a Windows local administrator.
 
 ---
 
-# Phase 17 — Windows Service Architecture
+# Phase 17a — Windows Service Foundation
 
 ## Goal
 
-Separate persistent enforcement from the graphical application.
-
-## Potential architecture
+Introduce a Windows Service that owns usage tracking and enforcement, independent of the graphical application.
 
 ```text
-ControlTime.App
-       │
-       │ IPC
-       ▼
-ControlTime.Service
+ControlTime.Service (SYSTEM)
+    │
+    ├── MonitoringService tick (Core, reused)
+    ├── Usage tracking (sole writer of usage sessions)
+    └── EnforcementService → WTSDisconnectSession
 ```
 
-## Potential Service responsibilities
+## Why split Phase 17
 
-* persistent enforcement
-* monitoring orchestration
-* protected runtime state
-* continuing to enforce rules when UI is closed
+The original Phase 17 (Service + IPC + App as client) is too large for one Plan/Build/Test cycle.
+
+* 17a: Service project, shared machine-wide database, Service-side activity/lock via WTS, Service owns tracking and enforcement; App becomes read-only for usage state.
+* 17b: IPC (named pipe), App becomes client of the Service (status, admin mode, activity reports).
+
+## Technical constraints (Windows)
+
+A service runs as SYSTEM in session 0:
+
+* `LockWorkStation` and `GetLastInputInfo` do not affect or observe the user session.
+* `WTSDisconnectSession` on the active console session works from SYSTEM and is user-equivalent to a lock (access screen, processes alive, re-login required).
+* Idle detection for another session is not possible from the Service; full precision arrives in 17b (App reports activity) and is formalized in Phase 18.
+
+## Scope
+
+* New project `src/ControlTime.Service` (Worker Service, `UseWindowsService`, console-runnable for development).
+* Database moved to `C:\ProgramData\ControlTime` (shared by App and Service) with automatic move of the legacy `%APPDATA%` database on startup.
+* Service-side activity source: active console session connected → `Active`; no active/connected session → `Locked`. No idle yet.
+* Service-side lock: `WTSDisconnectSession` implementation of `ISessionLock`.
+* Service owns `UsageTrackingService` (sole writer) and `EnforcementService` (30 s re-lock grace reused: re-login after a Service lock yields a fresh `Active` episode).
+* App stops local usage tracking and enforcement (no double writes); UI keeps local activity probe and read-only Dashboard polling for display.
+* Manual service registration (`sc create`, documented; installer arrives in Phase 21).
+
+## Out of scope
+
+* IPC and App as Service client (17b).
+* Idle detection from the Service (17b via App reports).
+* User-session agent (Phase 18).
+* Installer (Phase 21).
+
+## Known limitations accepted in 17a
+
+* While the UI is closed, idle time is counted as usage (no idle source on the Service side).
+* UI admin mode does not pause Service enforcement (arrives in 17b); legitimate administration while `Blocked` uses granted time.
+
+---
+
+# Phase 17b — Service IPC and App Client
+
+## Goal
+
+Make the App a client of the Service so status, administration and activity flow through the protected Service process.
+
+```text
+ControlTime.App ──named pipe──► ControlTime.Service
+     status poll ←─┘            ├ AdminAuthService (sole authority)
+     admin commands ──►         ├ Enforcement (paused during admin mode)
+     activity reports ──►       └ Activity source: fresh App report > WTS fallback
+```
+
+## Scope
+
+* Core: plain DTO records + `IMonitoringGateway` abstraction (no Windows/pipe types in Core).
+* Infrastructure: named-pipe server (Service side) and client (App side); single JSON line per request/response; pipe accessible to the interactive user, but admin commands require the administrator password verified by the Service.
+* Messages: `GetStatus` (dashboard + activity + admin mode + enforcement state), `ReportActivity` (App heartbeat ~1 s), `EnterAdminMode(password)`, `ExitAdminMode`.
+* Service activity preference: App report fresher than ~5 s wins; otherwise WTS fallback (`Active` while console connected / `Locked`).
+* `AdminAuthService` lives only in the Service; App admin flows (Rules gate, grants, exit, change password, attempt lockout) go through the gateway.
+* App: local `MonitoringHost` loop replaced by gateway polling (~1 s, off the UI thread); Dashboard, tray tooltip and warnings fed from Service status.
+* Settings screen: Service state visible (running / not available).
+
+## Out of scope
+
+* User-session agent (Phase 18).
+* Installer / automatic service registration (Phase 21).
 
 ## Important
 
@@ -855,11 +913,7 @@ Do not duplicate business rules.
 
 RuleEngine remains reusable Core functionality.
 
-## IPC
-
-Define a secure local communication mechanism between UI and Service.
-
-Do not expose unnecessary remote/network interfaces.
+Do not expose unnecessary remote/network interfaces (local named pipe only).
 
 ---
 
@@ -1085,7 +1139,8 @@ This is the first practically usable version.
 
 ```text
 Phase 16 — Administration Hardening
-Phase 17 — Windows Service
+Phase 17a — Windows Service Foundation
+Phase 17b — Service IPC and App Client
 Phase 18 — User Session Integration
 Phase 19 — Usage History UI
 Phase 20 — Reliability

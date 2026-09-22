@@ -65,16 +65,23 @@ public class EnforcementServiceTests
 
         public FakeAdminAuthService AdminAuthService { get; } = new();
 
+        public FixedTimeProvider Clock { get; } = new(BaseTime);
+
         public EnforcementService Service { get; }
 
-        public Fixture() => Service = new EnforcementService(AdminAuthService, SessionLock);
+        public Fixture() => Service = new EnforcementService(AdminAuthService, SessionLock, Clock);
+
+        public void Advance(TimeSpan duration) => Clock.Now += duration;
+
+        public void AdvanceBeyondGrace() =>
+            Advance(EnforcementService.ReLockGracePeriod + TimeSpan.FromSeconds(1));
 
         public void Process(
             AccessState access,
             ActivityState activity,
             bool hasEnabledRules = true) =>
             Service.Process(new MonitorState(
-                new ActivityStatus(activity, BaseTime, BaseTime),
+                new ActivityStatus(activity, Clock.Now, Clock.Now),
                 new DashboardSnapshot(
                     access,
                     null,
@@ -142,13 +149,19 @@ public class EnforcementServiceTests
         var fixture = new Fixture();
 
         fixture.Process(AccessState.Blocked, ActivityState.Active);
+        fixture.AdvanceBeyondGrace();
+        fixture.Process(AccessState.Blocked, ActivityState.Active);
         Assert.Equal(1, fixture.SessionLock.LockCount);
 
         fixture.Process(AccessState.Blocked, ActivityState.Locked);
         fixture.Process(AccessState.Blocked, ActivityState.Active);
+        fixture.AdvanceBeyondGrace();
+        fixture.Process(AccessState.Blocked, ActivityState.Active);
         Assert.Equal(2, fixture.SessionLock.LockCount);
 
         fixture.Process(AccessState.Blocked, ActivityState.Idle);
+        fixture.Process(AccessState.Blocked, ActivityState.Active);
+        fixture.AdvanceBeyondGrace();
         fixture.Process(AccessState.Blocked, ActivityState.Active);
         Assert.Equal(3, fixture.SessionLock.LockCount);
 
@@ -188,6 +201,10 @@ public class EnforcementServiceTests
         var fixture = new Fixture();
 
         fixture.Process(AccessState.Blocked, ActivityState.Active);
+        fixture.AdvanceBeyondGrace();
+        fixture.Process(AccessState.Blocked, ActivityState.Active);
+        Assert.Equal(1, fixture.SessionLock.LockCount);
+
         fixture.Process(AccessState.Allowed, ActivityState.Active);
         fixture.Process(AccessState.Blocked, ActivityState.Active);
 
@@ -200,6 +217,8 @@ public class EnforcementServiceTests
         var fixture = new Fixture();
         fixture.SessionLock.Result = false;
 
+        fixture.Process(AccessState.Blocked, ActivityState.Active);
+        fixture.AdvanceBeyondGrace();
         fixture.Process(AccessState.Blocked, ActivityState.Active);
         Assert.Equal(1, fixture.SessionLock.LockCount);
 
@@ -221,10 +240,96 @@ public class EnforcementServiceTests
         fixture.SessionLock.ThrowOnCall = true;
 
         fixture.Process(AccessState.Blocked, ActivityState.Active);
+        fixture.AdvanceBeyondGrace();
+        fixture.Process(AccessState.Blocked, ActivityState.Active);
 
         fixture.SessionLock.ThrowOnCall = false;
         fixture.Process(AccessState.Blocked, ActivityState.Active);
 
         Assert.Equal(2, fixture.SessionLock.LockCount);
+    }
+
+    [Fact]
+    public void NewActiveEpisodeWhileBlockedWaitsForGracePeriod()
+    {
+        var fixture = new Fixture();
+
+        fixture.Process(AccessState.Blocked, ActivityState.Active);
+        fixture.Advance(TimeSpan.FromSeconds(29));
+        fixture.Process(AccessState.Blocked, ActivityState.Active);
+        Assert.Equal(0, fixture.SessionLock.LockCount);
+
+        fixture.Advance(TimeSpan.FromSeconds(2));
+        fixture.Process(AccessState.Blocked, ActivityState.Active);
+        Assert.Equal(1, fixture.SessionLock.LockCount);
+
+        fixture.Process(AccessState.Blocked, ActivityState.Active);
+        Assert.Equal(1, fixture.SessionLock.LockCount);
+    }
+
+    [Fact]
+    public void BlockedMidActiveEpisodeLocksImmediately()
+    {
+        var fixture = new Fixture();
+
+        fixture.Process(AccessState.Allowed, ActivityState.Active);
+        fixture.Advance(TimeSpan.FromMinutes(10));
+        fixture.Process(AccessState.Blocked, ActivityState.Active);
+
+        Assert.Equal(1, fixture.SessionLock.LockCount);
+    }
+
+    [Fact]
+    public void UnlockWhileBlockedGrantsGraceBeforeRelock()
+    {
+        var fixture = new Fixture();
+
+        fixture.Process(AccessState.Blocked, ActivityState.Active);
+        fixture.AdvanceBeyondGrace();
+        fixture.Process(AccessState.Blocked, ActivityState.Active);
+        Assert.Equal(1, fixture.SessionLock.LockCount);
+
+        fixture.Process(AccessState.Blocked, ActivityState.Locked);
+        fixture.Process(AccessState.Blocked, ActivityState.Active);
+        Assert.Equal(1, fixture.SessionLock.LockCount);
+
+        fixture.Advance(TimeSpan.FromSeconds(10));
+        fixture.Process(AccessState.Blocked, ActivityState.Active);
+        Assert.Equal(1, fixture.SessionLock.LockCount);
+
+        fixture.AdvanceBeyondGrace();
+        fixture.Process(AccessState.Blocked, ActivityState.Active);
+        Assert.Equal(2, fixture.SessionLock.LockCount);
+    }
+
+    [Fact]
+    public void AllowedDuringGraceCancelsPendingLock()
+    {
+        var fixture = new Fixture();
+
+        fixture.Process(AccessState.Blocked, ActivityState.Active);
+        fixture.Process(AccessState.Allowed, ActivityState.Active);
+
+        fixture.AdvanceBeyondGrace();
+        fixture.Process(AccessState.Allowed, ActivityState.Active);
+
+        Assert.Equal(0, fixture.SessionLock.LockCount);
+    }
+
+    [Fact]
+    public void AdminModeDuringGraceConsumesGrace()
+    {
+        var fixture = new Fixture();
+
+        fixture.Process(AccessState.Blocked, ActivityState.Active);
+        Assert.Equal(0, fixture.SessionLock.LockCount);
+
+        fixture.AdminAuthService.IsAdminMode = true;
+        fixture.Process(AccessState.Blocked, ActivityState.Active);
+
+        fixture.AdminAuthService.IsAdminMode = false;
+        fixture.Process(AccessState.Blocked, ActivityState.Active);
+
+        Assert.Equal(1, fixture.SessionLock.LockCount);
     }
 }

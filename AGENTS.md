@@ -127,7 +127,7 @@ Created:
 * `ControlTime.App` `BalloonTipNotifier` (`Services/`, hidden `NotifyIcon` + `ShowBalloonTip`), warning notifications wired to `MonitoringHost.StateChanged`; Dashboard now explains remaining time explicitly in the warning state
 
 * `docs/phases/phase-14.md`
-* `ControlTime.Core` `ISessionLock` (`Abstractions/`) and `EnforcementService` (`Services/`): edge-triggered session locking while `Blocked` with enabled rules, suspended during admin mode, re-lock per activity episode, retry on failure
+* `ControlTime.Core` `ISessionLock` (`Abstractions/`) and `EnforcementService` (`Services/`): edge-triggered session locking while `Blocked` with enabled rules, suspended during admin mode, re-lock per activity episode, retry on failure; 30 s re-lock grace period on each new `Active` episode while `Blocked` (post-unlock / app restart / idle return), immediate lock when `Blocked` starts mid-episode
 * `ControlTime.Infrastructure` `WindowsSessionLock` (`Windows/`, `LockWorkStation` P/Invoke with failure logging)
 * `ControlTime.App` enforcement wired to `MonitoringHost.StateChanged`; `CONTROLTIME_ENFORCEMENT=off` environment kill switch evaluated only in App composition
 

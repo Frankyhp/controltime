@@ -85,3 +85,7 @@ Out of scope:
 - Enforcement is in-process: closing the app or killing the process bypasses it; hardening (tray persistence, Windows Service) belongs to later phases.
 - A Windows administrator can still end the process or edit the database; the mechanism is configuration protection, not system security.
 - Repeated `LockWorkStation` failures log once per tick until they succeed; no backoff yet.
+
+## Revision — Re-lock grace period (2026-09-22)
+
+`EnforcementService` now grants a 30 s grace period (`ReLockGracePeriod`, injectable `TimeProvider`) before locking whenever a *new* `Active` episode begins while `Blocked`: after unlocking the session, after an app restart, or after returning from `Idle`. If `Blocked` appears in the middle of an already-running `Active` episode (limit exhausted during use), the lock remains immediate (~1 s tick). During the grace window the user can grant bonus time or enter admin mode; `Allowed`/`Warning`, admin mode or `Locked` cancel the pending lock, and admin-mode expiry consumes the remaining grace (immediate lock on the next tick). The episode start is anchored to the first `Blocked` tick of the new `Active` episode.

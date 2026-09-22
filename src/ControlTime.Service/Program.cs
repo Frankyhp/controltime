@@ -2,6 +2,7 @@ using ControlTime.Core;
 using ControlTime.Core.Abstractions;
 using ControlTime.Core.Services;
 using ControlTime.Infrastructure;
+using ControlTime.Infrastructure.Ipc;
 using ControlTime.Infrastructure.Windows;
 using ControlTime.Service;
 using Microsoft.EntityFrameworkCore;
@@ -26,12 +27,18 @@ builder.Services.AddTransient<IAppSettingsStore, SqliteAppSettingsStore>();
 builder.Services.AddTransient<ITimeGrantStore, SqliteTimeGrantStore>();
 builder.Services.AddTransient<IUsageSessionStore, SqliteUsageSessionStore>();
 builder.Services.AddSingleton<IPasswordHasher, Pbkdf2PasswordHasher>();
-builder.Services.AddSingleton<IAdminAuthService>(provider => new AdminAuthService(
+builder.Services.AddSingleton<AdminAuthService>(provider => new AdminAuthService(
     provider.GetRequiredService<IAppSettingsStore>(),
     provider.GetRequiredService<IPasswordHasher>()));
+builder.Services.AddSingleton<IAdminAuthService>(
+    provider => provider.GetRequiredService<AdminAuthService>());
 
-builder.Services.AddSingleton<IActivityMonitor>(provider => new WtsConsoleSessionMonitor(
-    provider.GetService<ILogger<WtsConsoleSessionMonitor>>()));
+builder.Services.AddSingleton<ActivityReportSink>();
+
+builder.Services.AddSingleton<IActivityMonitor>(provider => new CompositeActivityMonitor(
+    new WtsConsoleSessionMonitor(
+        provider.GetService<ILogger<WtsConsoleSessionMonitor>>()),
+    provider.GetRequiredService<ActivityReportSink>()));
 
 builder.Services.AddSingleton<RuleEngine>(_ => new RuleEngine());
 builder.Services.AddTransient<UsageService>();
@@ -51,11 +58,26 @@ builder.Services.AddSingleton<ISessionLock>(provider => new WtsSessionLock(
     provider.GetService<ILogger<WtsSessionLock>>()));
 builder.Services.AddSingleton<EnforcementService>();
 
-builder.Services.AddHostedService(provider => new MonitoringLoop(
+builder.Services.AddSingleton(provider => new MonitoringLoop(
     provider.GetRequiredService<MonitoringService>(),
     provider.GetRequiredService<EnforcementService>(),
     provider.GetRequiredService<IDbContextFactory<ControlTimeDbContext>>(),
     provider.GetRequiredService<ILogger<MonitoringLoop>>(),
     MonitoringLoop.IsEnforcementEnabled()));
+builder.Services.AddHostedService(
+    provider => provider.GetRequiredService<MonitoringLoop>());
+
+builder.Services.AddSingleton(provider => new ServiceStatusProvider(
+    provider.GetRequiredService<MonitoringLoop>(),
+    provider.GetRequiredService<IAdminAuthService>(),
+    provider.GetRequiredService<ActivityReportSink>(),
+    MonitoringLoop.IsEnforcementEnabled()));
+
+builder.Services.AddSingleton(provider => new ControlTimePipeServer(
+    provider.GetRequiredService<IAdminAuthService>(),
+    provider.GetRequiredService<ActivityReportSink>(),
+    provider.GetRequiredService<ServiceStatusProvider>().GetStatusAsync,
+    provider.GetService<ILogger<ControlTimePipeServer>>()));
+builder.Services.AddHostedService<PipeServerHost>();
 
 await builder.Build().RunAsync();

@@ -149,15 +149,24 @@ Created:
 * `ControlTime.Core` `MonitoringService`: `UsageTrackingService` now optional (App composes display-only ticks without tracking)
 * `ControlTime.App` no longer performs usage-session writes or enforcement; `ControlTime.Service` is the sole usage-session writer and enforcer (manual `sc create` registration until the Phase 21 installer)
 
+* `docs/phases/phase-17b.md`
+* `ControlTime.Core` `Contracts/`: `ServiceStatus` IPC DTOs + `ServiceStatusMapper`; `Abstractions/IControlTimeGateway` (pure, no pipe types)
+* `ControlTime.Infrastructure` `Ipc/`: `ActivityReportSink` (freshness-cached App activity), `CompositeActivityMonitor` (fresh App report > WTS fallback), `ControlTimePipeServer` / `ControlTimePipeClient` (named pipe `ControlTime.Monitoring`, one JSON line per request/response), `GatewayAdminAuthService : IAdminAuthService` (App-side façade); `Windows/WindowsNamedPipes` (SDDL DACL + overlapped `CreateNamedPipeW`)
+* `ControlTime.Service` `ServiceStatusProvider` + `PipeServerHost`; `AdminAuthService` now lives only in the Service (admin mode pauses its enforcement); new `ServiceUnavailable` admin result members
+* `ControlTime.App` `ServiceClientHost` replaces `MonitoringHost` (1 s poll: report local activity + fetch status); Dashboard banner and tray tooltip on unavailable Service; Settings enforcement label reads from the Service; SQLite busy timeout 5 s (App and Service are separate writers)
+* Infrastructure and Tests target `net10.0-windows` (pipe security layer is Windows-only)
+
 Phase 17 was split into `Phase 17a — Windows Service Foundation` and `Phase 17b — Service IPC and App Client`.
 
 Phase 17a — Windows Service Foundation is complete.
 
+Phase 17b — Service IPC and App Client is complete.
+
 Current phase:
 
-`Phase 17b — Service IPC and App Client` (planned, not started)
+`Phase 18 — User Session Integration` (not started)
 
-Do not implement functionality belonging to Phase 17b or later.
+Do not implement functionality belonging to Phase 18 or later without planning Phase 18 first.
 
 ---
 

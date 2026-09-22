@@ -2,11 +2,11 @@
 using ControlTime.App.Services;
 using ControlTime.App.ViewModels;
 using ControlTime.App.Views;
-using ControlTime.Core;
 using ControlTime.Core.Abstractions;
 using ControlTime.Core.Domain;
 using ControlTime.Core.Services;
 using ControlTime.Infrastructure;
+using ControlTime.Infrastructure.Ipc;
 using ControlTime.Infrastructure.Windows;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -20,8 +20,9 @@ namespace ControlTime.App;
 public partial class App : Application
 {
     private ServiceProvider? _services;
-    private MonitoringHost? _monitoringHost;
+    private ServiceClientHost? _serviceClientHost;
     private Action<MonitorState>? _trayStateChangedHandler;
+    private Action<bool>? _trayAvailabilityHandler;
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -54,15 +55,15 @@ public partial class App : Application
             return;
         }
 
-        MonitoringHost monitoringHost = services.GetRequiredService<MonitoringHost>();
-        _monitoringHost = monitoringHost;
+        ServiceClientHost serviceClientHost = services.GetRequiredService<ServiceClientHost>();
+        _serviceClientHost = serviceClientHost;
 
         WarningNotifier warningNotifier = services.GetRequiredService<WarningNotifier>();
 
         ILogger<WarningNotifier> notifierLogger =
             services.GetRequiredService<ILogger<WarningNotifier>>();
 
-        monitoringHost.StateChanged += state =>
+        serviceClientHost.StateChanged += state =>
         {
             try
             {
@@ -74,8 +75,9 @@ public partial class App : Application
             }
         };
 
-        // Desde la fase 17a el tracking de uso y el enforcement viven en
-        // ControlTime.Service (Windows Service). La App solo presenta estado.
+        // Desde la fase 17/17b, el tracking de uso, la autenticación de
+        // administrador y el enforcement viven en ControlTime.Service.
+        // La App presenta estado, reporta actividad local y gestiona la UI.
 
         TrayIconService trayIcon = services.GetRequiredService<TrayIconService>();
 
@@ -96,11 +98,25 @@ public partial class App : Application
             }
         };
 
-        monitoringHost.StateChanged += _trayStateChangedHandler;
+        serviceClientHost.StateChanged += _trayStateChangedHandler;
+
+        _trayAvailabilityHandler = available =>
+        {
+            try
+            {
+                trayIcon.UpdateAvailability(available);
+            }
+            catch (Exception ex)
+            {
+                trayLogger.LogError(ex, "No se pudo actualizar el icono de la bandeja.");
+            }
+        };
+
+        serviceClientHost.AvailabilityChanged += _trayAvailabilityHandler;
 
         _ = trayIcon.SyncAutoStartFromSettingsAsync();
 
-        monitoringHost.Start();
+        serviceClientHost.Start();
 
         MainWindow = services.GetRequiredService<MainWindow>();
         MainWindow.Show();
@@ -108,9 +124,17 @@ public partial class App : Application
 
     protected override void OnExit(ExitEventArgs e)
     {
-        if (_monitoringHost is not null && _trayStateChangedHandler is not null)
+        if (_serviceClientHost is not null)
         {
-            _monitoringHost.StateChanged -= _trayStateChangedHandler;
+            if (_trayStateChangedHandler is not null)
+            {
+                _serviceClientHost.StateChanged -= _trayStateChangedHandler;
+            }
+
+            if (_trayAvailabilityHandler is not null)
+            {
+                _serviceClientHost.AvailabilityChanged -= _trayAvailabilityHandler;
+            }
         }
 
         _services?.Dispose();
@@ -140,14 +164,6 @@ public partial class App : Application
         Shutdown();
     }
 
-    private const string EnforcementDisabledVariable = "CONTROLTIME_ENFORCEMENT";
-
-    private static bool IsEnforcementEnabled() =>
-        !string.Equals(
-            Environment.GetEnvironmentVariable(EnforcementDisabledVariable),
-            "off",
-            StringComparison.OrdinalIgnoreCase);
-
     private static ServiceProvider CreateServices()
     {
         var services = new ServiceCollection();
@@ -162,27 +178,17 @@ public partial class App : Application
         services.AddTransient<IUsageRuleStore, SqliteUsageRuleStore>();
         services.AddTransient<IAppSettingsStore, SqliteAppSettingsStore>();
         services.AddTransient<ITimeGrantStore, SqliteTimeGrantStore>();
-        services.AddTransient<IUsageSessionStore, SqliteUsageSessionStore>();
-        services.AddSingleton<IPasswordHasher, Pbkdf2PasswordHasher>();
-        services.AddSingleton<IAdminAuthService>(provider => new AdminAuthService(
-            provider.GetRequiredService<IAppSettingsStore>(),
-            provider.GetRequiredService<IPasswordHasher>()));
 
         services.AddSingleton<IActivityMonitor>(provider => new WindowsActivityMonitor(
             logger: provider.GetService<ILogger<WindowsActivityMonitor>>()));
 
-        services.AddSingleton<RuleEngine>(_ => new RuleEngine());
-        services.AddTransient<UsageService>();
-        services.AddTransient<DashboardService>(provider => new DashboardService(
-            provider.GetRequiredService<IUsageRuleStore>(),
-            provider.GetRequiredService<ITimeGrantStore>(),
-            provider.GetRequiredService<UsageService>(),
-            provider.GetRequiredService<RuleEngine>()));
-
-        services.AddTransient<MonitoringService>(provider => new MonitoringService(
-            provider.GetRequiredService<IActivityMonitor>(),
-            provider.GetRequiredService<DashboardService>()));
-        services.AddSingleton<MonitoringHost>();
+        services.AddSingleton<ControlTimePipeClient>();
+        services.AddSingleton<IControlTimeGateway>(
+            provider => provider.GetRequiredService<ControlTimePipeClient>());
+        services.AddSingleton<GatewayAdminAuthService>();
+        services.AddSingleton<IAdminAuthService>(
+            provider => provider.GetRequiredService<GatewayAdminAuthService>());
+        services.AddSingleton<ServiceClientHost>();
 
         services.AddSingleton<WarningEvaluator>();
         services.AddSingleton<WarningNotifier>(provider => new WarningNotifier(
@@ -202,10 +208,10 @@ public partial class App : Application
         services.AddTransient<RulesViewModel>();
         services.AddTransient<SettingsViewModel>(provider => new SettingsViewModel(
             provider.GetRequiredService<IAdminAuthService>(),
+            provider.GetRequiredService<IControlTimeGateway>(),
             provider.GetRequiredService<IAppSettingsStore>(),
             provider.GetRequiredService<IAutostartRegistrar>(),
-            provider.GetRequiredService<ILogger<SettingsViewModel>>(),
-            IsEnforcementEnabled()));
+            provider.GetRequiredService<ILogger<SettingsViewModel>>()));
         services.AddTransient<MainViewModel>();
         services.AddSingleton<MainWindow>();
 

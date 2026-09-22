@@ -19,6 +19,8 @@ public sealed class MonitoringLoop : BackgroundService
     private readonly ILogger<MonitoringLoop> _logger;
     private readonly bool _enforcementEnabled;
 
+    private MonitorState? _lastState;
+
     public MonitoringLoop(
         MonitoringService monitoringService,
         EnforcementService enforcementService,
@@ -37,6 +39,8 @@ public sealed class MonitoringLoop : BackgroundService
         _logger = logger;
         _enforcementEnabled = enforcementEnabled;
     }
+
+    public MonitorState? LastState => _lastState;
 
     public static bool IsEnforcementEnabled() =>
         !string.Equals(
@@ -75,6 +79,8 @@ public sealed class MonitoringLoop : BackgroundService
             MonitorState state = await _monitoringService.TickAsync(
                 DateTimeOffset.Now.Offset,
                 cancellationToken);
+
+            _lastState = state;
 
             if (!_enforcementEnabled)
             {

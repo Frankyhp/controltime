@@ -101,6 +101,18 @@ public sealed class TrayIconService : INotifier, IDisposable
         _notifyIcon.Text = Truncate($"ControlTime — {stateText}, quedan {remainingText}");
     }
 
+    public void UpdateAvailability(bool available)
+    {
+        if (_disposed || available)
+        {
+            return;
+        }
+
+        _stateItem.Text = "Estado: servicio no disponible";
+        _remainingItem.Text = "Tiempo restante: —";
+        _notifyIcon.Text = Truncate("ControlTime — servicio no disponible");
+    }
+
     public async Task SyncAutoStartFromSettingsAsync(CancellationToken cancellationToken = default)
     {
         string? stored = await _appSettingsStore.GetAsync(AutoStartSettingKey, cancellationToken);

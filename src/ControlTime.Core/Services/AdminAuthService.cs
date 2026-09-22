@@ -8,7 +8,8 @@ public enum AdminAuthenticationResult
     Success,
     NotConfigured,
     InvalidPassword,
-    LockedOut
+    LockedOut,
+    ServiceUnavailable
 }
 
 public enum AdminPasswordResult
@@ -16,7 +17,8 @@ public enum AdminPasswordResult
     Success,
     AlreadyConfigured,
     TooShort,
-    InvalidCharacters
+    InvalidCharacters,
+    ServiceUnavailable
 }
 
 public enum AdminPasswordChangeResult
@@ -26,7 +28,8 @@ public enum AdminPasswordChangeResult
     InvalidPassword,
     TooShort,
     InvalidCharacters,
-    LockedOut
+    LockedOut,
+    ServiceUnavailable
 }
 
 public interface IAdminAuthService
@@ -90,6 +93,8 @@ public sealed class AdminAuthService : IAdminAuthService
 
     public bool IsAdminMode =>
         _adminModeExpiresAt is DateTimeOffset expiresAt && _timeProvider.GetUtcNow() < expiresAt;
+
+    public DateTimeOffset? AdminModeExpiresAt => IsAdminMode ? _adminModeExpiresAt : null;
 
     public async Task<bool> HasPasswordAsync(CancellationToken cancellationToken = default)
     {

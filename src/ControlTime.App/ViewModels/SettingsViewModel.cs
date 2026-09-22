@@ -10,13 +10,14 @@ namespace ControlTime.App.ViewModels;
 public sealed class SettingsViewModel : ObservableObject
 {
     private readonly IAdminAuthService _adminAuthService;
+    private readonly IControlTimeGateway _gateway;
     private readonly IAppSettingsStore _appSettingsStore;
     private readonly IAutostartRegistrar _autostartRegistrar;
     private readonly ILogger<SettingsViewModel> _logger;
-    private readonly bool _isEnforcementEnabled;
     private readonly DispatcherTimer _adminSessionTimer;
     private readonly List<Action> _raiseCommandCanExecute = [];
 
+    private bool? _serviceEnforcementEnabled;
     private bool _initialized;
     private bool _showSetupPanel;
     private bool _showUnlockPanel;
@@ -28,21 +29,22 @@ public sealed class SettingsViewModel : ObservableObject
 
     public SettingsViewModel(
         IAdminAuthService adminAuthService,
+        IControlTimeGateway gateway,
         IAppSettingsStore appSettingsStore,
         IAutostartRegistrar autostartRegistrar,
-        ILogger<SettingsViewModel> logger,
-        bool isEnforcementEnabled)
+        ILogger<SettingsViewModel> logger)
     {
         ArgumentNullException.ThrowIfNull(adminAuthService);
+        ArgumentNullException.ThrowIfNull(gateway);
         ArgumentNullException.ThrowIfNull(appSettingsStore);
         ArgumentNullException.ThrowIfNull(autostartRegistrar);
         ArgumentNullException.ThrowIfNull(logger);
 
         _adminAuthService = adminAuthService;
+        _gateway = gateway;
         _appSettingsStore = appSettingsStore;
         _autostartRegistrar = autostartRegistrar;
         _logger = logger;
-        _isEnforcementEnabled = isEnforcementEnabled;
 
         _adminSessionTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         _adminSessionTimer.Tick += (_, _) => RefreshAdminState();
@@ -124,13 +126,24 @@ public sealed class SettingsViewModel : ObservableObject
         private set => SetField(ref _autoStartEnabled, value);
     }
 
-    public string EnforcementStatusText => _isEnforcementEnabled
-        ? "activo"
-        : "desactivado por la variable de entorno CONTROLTIME_ENFORCEMENT";
+    public string EnforcementStatusText => _serviceEnforcementEnabled switch
+    {
+        true => "activo",
+        false => "desactivado por la variable de entorno CONTROLTIME_ENFORCEMENT",
+        _ => "desconocido (el servicio de ControlTime no está disponible)",
+    };
 
     public async Task InitializeAsync()
     {
         _adminSessionTimer.Start();
+
+        Core.Contracts.ServiceStatus? status = await _gateway.GetStatusAsync();
+
+        if (_serviceEnforcementEnabled != status?.EnforcementEnabled)
+        {
+            _serviceEnforcementEnabled = status?.EnforcementEnabled;
+            OnPropertyChanged(nameof(EnforcementStatusText));
+        }
 
         if (_initialized)
         {
@@ -177,6 +190,9 @@ public sealed class SettingsViewModel : ObservableObject
                 ShowSetupPanel = false;
                 RefreshAdminState();
                 break;
+            case AdminPasswordResult.ServiceUnavailable:
+                ErrorMessage = "El servicio de ControlTime no está disponible.";
+                break;
         }
     }
 
@@ -202,6 +218,9 @@ public sealed class SettingsViewModel : ObservableObject
                 ErrorMessage = string.Empty;
                 ShowSetupPanel = true;
                 RefreshAdminState();
+                break;
+            case AdminAuthenticationResult.ServiceUnavailable:
+                ErrorMessage = "El servicio de ControlTime no está disponible.";
                 break;
         }
     }
@@ -241,6 +260,9 @@ public sealed class SettingsViewModel : ObservableObject
                 ErrorMessage = string.Empty;
                 ShowSetupPanel = true;
                 RefreshAdminState();
+                break;
+            case AdminPasswordChangeResult.ServiceUnavailable:
+                ErrorMessage = "El servicio de ControlTime no está disponible.";
                 break;
         }
     }

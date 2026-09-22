@@ -20,6 +20,7 @@ public static class ControlTimeStorage
         return new Microsoft.Data.Sqlite.SqliteConnectionStringBuilder
         {
             DataSource = path,
+            DefaultTimeout = 5,
         }.ToString();
     }
 

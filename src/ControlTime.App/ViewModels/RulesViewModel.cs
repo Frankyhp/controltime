@@ -354,6 +354,9 @@ public sealed class RulesViewModel : ObservableObject
                 ShowSetupPanel = false;
                 RefreshAdminState();
                 break;
+            case AdminPasswordResult.ServiceUnavailable:
+                ErrorMessage = "El servicio de ControlTime no está disponible.";
+                break;
         }
     }
 
@@ -376,6 +379,9 @@ public sealed class RulesViewModel : ObservableObject
                 ErrorMessage = string.Empty;
                 ShowSetupPanel = true;
                 RefreshAdminState();
+                break;
+            case AdminAuthenticationResult.ServiceUnavailable:
+                ErrorMessage = "El servicio de ControlTime no está disponible.";
                 break;
         }
     }
@@ -572,6 +578,9 @@ public sealed class RulesViewModel : ObservableObject
                 ShowGrantPanel = false;
                 ShowSetupPanel = true;
                 RefreshAdminState();
+                return;
+            case AdminAuthenticationResult.ServiceUnavailable:
+                ErrorMessage = "El servicio de ControlTime no está disponible.";
                 return;
         }
 

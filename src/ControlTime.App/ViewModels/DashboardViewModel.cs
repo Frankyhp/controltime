@@ -11,7 +11,7 @@ public sealed class DashboardViewModel : ObservableObject
 {
     private static readonly CultureInfo SpanishCulture = CultureInfo.GetCultureInfo("es-ES");
 
-    private readonly MonitoringHost _monitoringHost;
+    private readonly ServiceClientHost _serviceClientHost;
 
     private bool _subscribed;
     private string _stateText = "—";
@@ -28,11 +28,11 @@ public sealed class DashboardViewModel : ObservableObject
     private Brush _activityBrush = Brushes.Gray;
     private string _errorMessage = string.Empty;
 
-    public DashboardViewModel(MonitoringHost monitoringHost)
+    public DashboardViewModel(ServiceClientHost serviceClientHost)
     {
-        ArgumentNullException.ThrowIfNull(monitoringHost);
+        ArgumentNullException.ThrowIfNull(serviceClientHost);
 
-        _monitoringHost = monitoringHost;
+        _serviceClientHost = serviceClientHost;
     }
 
     public string StateText
@@ -125,14 +125,21 @@ public sealed class DashboardViewModel : ObservableObject
     {
         if (!_subscribed)
         {
-            _monitoringHost.StateChanged += OnStateChanged;
-            _monitoringHost.TickFailed += OnTickFailed;
+            _serviceClientHost.StateChanged += OnStateChanged;
+            _serviceClientHost.TickFailed += OnTickFailed;
+            _serviceClientHost.AvailabilityChanged += OnAvailabilityChanged;
             _subscribed = true;
         }
 
-        if (_monitoringHost.LastState is { } state)
+        if (_serviceClientHost.LastState is { } state)
         {
             Apply(state);
+        }
+
+        if (!_serviceClientHost.ServiceAvailable)
+        {
+            ErrorMessage = "El servicio de ControlTime no está disponible. " +
+                "Inicie el servicio ControlTimeService para controlar el uso del equipo.";
         }
     }
 
@@ -143,8 +150,9 @@ public sealed class DashboardViewModel : ObservableObject
             return;
         }
 
-        _monitoringHost.StateChanged -= OnStateChanged;
-        _monitoringHost.TickFailed -= OnTickFailed;
+        _serviceClientHost.StateChanged -= OnStateChanged;
+        _serviceClientHost.TickFailed -= OnTickFailed;
+        _serviceClientHost.AvailabilityChanged -= OnAvailabilityChanged;
         _subscribed = false;
     }
 
@@ -157,6 +165,14 @@ public sealed class DashboardViewModel : ObservableObject
     private void OnTickFailed(Exception exception)
     {
         ErrorMessage = "No se pudo leer el estado: " + exception.Message;
+    }
+
+    private void OnAvailabilityChanged(bool available)
+    {
+        ErrorMessage = available
+            ? string.Empty
+            : "El servicio de ControlTime no está disponible. " +
+              "Inicie el servicio ControlTimeService para controlar el uso del equipo.";
     }
 
     private void Apply(MonitorState state)

@@ -10,4 +10,9 @@ public interface ITimeGrantStore
         DateOnly day,
         TimeSpan utcOffset,
         CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<TimeGrant>> GetGrantsInRangeAsync(
+        DateTimeOffset from,
+        DateTimeOffset to,
+        CancellationToken cancellationToken = default);
 }

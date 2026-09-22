@@ -14,6 +14,9 @@
         <DataTemplate DataType="{x:Type vm:RulesViewModel}">
             <views:RulesView />
         </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:UsageHistoryViewModel}">
+            <views:HistoryView />
+        </DataTemplate>
         <DataTemplate DataType="{x:Type vm:SettingsViewModel}">
             <views:SettingsView />
         </DataTemplate>
@@ -31,6 +34,12 @@
                              GroupName="Navigation"
                              IsChecked="{Binding IsRulesSelected, Mode=OneWay}"
                              Command="{Binding ShowRulesCommand}"
+                             VerticalAlignment="Center"
+                             Margin="0,0,12,0" />
+                <RadioButton Content="Historial"
+                             GroupName="Navigation"
+                             IsChecked="{Binding IsHistorySelected, Mode=OneWay}"
+                             Command="{Binding ShowHistoryCommand}"
                              VerticalAlignment="Center"
                              Margin="0,0,12,0" />
                 <RadioButton Content="Ajustes"

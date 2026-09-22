@@ -197,6 +197,10 @@ public partial class App : Application
         services.AddTransient<IAppSettingsStore, SqliteAppSettingsStore>();
         services.AddTransient<ITimeGrantStore, SqliteTimeGrantStore>();
 
+        // Solo lectura: el Servicio es el único escritor de sesiones de uso.
+        services.AddTransient<IUsageSessionStore, SqliteUsageSessionStore>();
+        services.AddTransient<UsageHistoryService>();
+
         services.AddSingleton<IActivityMonitor>(provider => new WindowsActivityMonitor(
             logger: provider.GetService<ILogger<WindowsActivityMonitor>>()));
 
@@ -224,6 +228,7 @@ public partial class App : Application
 
         services.AddTransient<DashboardViewModel>();
         services.AddTransient<RulesViewModel>();
+        services.AddTransient<UsageHistoryViewModel>();
         services.AddTransient<SettingsViewModel>(provider => new SettingsViewModel(
             provider.GetRequiredService<IAdminAuthService>(),
             provider.GetRequiredService<IControlTimeGateway>(),

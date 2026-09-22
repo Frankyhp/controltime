@@ -52,6 +52,18 @@ internal sealed class FakeTimeGrantStore(params TimeGrant[] grants) : ITimeGrant
 
         return Task.FromResult<IReadOnlyList<TimeGrant>>(matches);
     }
+
+    public Task<IReadOnlyList<TimeGrant>> GetGrantsInRangeAsync(
+        DateTimeOffset from,
+        DateTimeOffset to,
+        CancellationToken cancellationToken = default)
+    {
+        var matches = _grants
+            .Where(g => g.GrantedAt >= from && g.GrantedAt < to)
+            .ToList();
+
+        return Task.FromResult<IReadOnlyList<TimeGrant>>(matches);
+    }
 }
 
 internal sealed class FakeUsageSessionStore(params UsageSession[] sessions) : IUsageSessionStore

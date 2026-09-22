@@ -58,4 +58,45 @@ public class SqliteTimeGrantStore(IDbContextFactory<ControlTimeDbContext> factor
 
         return grants;
     }
+
+    public async Task<IReadOnlyList<TimeGrant>> GetGrantsInRangeAsync(
+        DateTimeOffset from,
+        DateTimeOffset to,
+        CancellationToken cancellationToken = default)
+    {
+        if (to <= from)
+        {
+            throw new ArgumentOutOfRangeException(nameof(to));
+        }
+
+        DateTime fromUtc = from.UtcDateTime;
+        DateTime toUtc = to.UtcDateTime;
+
+        await using ControlTimeDbContext context = factory.CreateDbContext();
+
+        var entities = await context.TimeGrants
+            .AsNoTracking()
+            .Where(g => g.GrantedAtUtc >= fromUtc && g.GrantedAtUtc < toUtc)
+            .ToListAsync(cancellationToken);
+
+        List<TimeGrant> grants = [];
+
+        foreach (var entity in entities)
+        {
+            var result = TimeGrant.TryCreate(
+                entity.Id,
+                new DateTimeOffset(entity.GrantedAtUtc, TimeSpan.Zero),
+                entity.Minutes,
+                out var grant);
+
+            if (result.Failed)
+            {
+                throw new InvalidOperationException($"Time grant '{entity.Id}' has invalid persisted data.");
+            }
+
+            grants.Add(grant!);
+        }
+
+        return grants;
+    }
 }

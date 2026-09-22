@@ -161,6 +161,11 @@ Created:
 * `ControlTime.Infrastructure` `Windows/WindowsConsoleSessionId` (`WTSGetActiveConsoleSessionId` wrapper); `CompositeActivityMonitor` now consumes only fresh reports of the active console session (other sessions' reports ignored; no console session → WTS fallback) and exposes `IsUsingReportedActivity` (used by `ServiceStatusProvider`)
 * `ControlTime.App` single instance per Windows session (named mutex `Local\ControlTime.App`; second instance exits immediately); the App is formally the user-session agent (no separate agent process introduced)
 
+* `docs/phases/phase-19.md`
+* `ControlTime.Core` `UsageHistoryEntry` / `UsageHistory` (`Domain/`) and `UsageHistoryService` (`Services/`): single-range load of sessions and grants, per-day usage via `UsageCalculator` (open sessions count up to now), per-day bonus attribution, `CurrentWeekUsage` summed from Monday
+* `ControlTime.Core` `ITimeGrantStore` extended with `GetGrantsInRangeAsync` (implemented in `SqliteTimeGrantStore`)
+* `ControlTime.App` Historial tab (`Views/HistoryView`, `ViewModels/UsageHistoryViewModel`): week-total card, 14-day list (Día / Uso / Bonus, "Hoy"/"Ayer" labels), sessions of the selected day, manual refresh; App registers `IUsageSessionStore` read-only (Service remains sole session writer)
+
 Phase 17 was split into `Phase 17a — Windows Service Foundation` and `Phase 17b — Service IPC and App Client`.
 
 Phase 17a — Windows Service Foundation is complete.
@@ -169,11 +174,13 @@ Phase 17b — Service IPC and App Client is complete.
 
 Phase 18 — User Session Integration is complete.
 
+Phase 19 — Usage History UI is complete.
+
 Current phase:
 
-`Phase 19 — Usage History UI` (not started)
+`Phase 20 — Reliability and Recovery` (not started)
 
-Do not implement functionality belonging to Phase 19 or later without planning Phase 19 first.
+Do not implement functionality belonging to Phase 20 or later without planning Phase 20 first.
 
 ---
 

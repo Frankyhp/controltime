@@ -14,6 +14,9 @@
         <DataTemplate DataType="{x:Type vm:RulesViewModel}">
             <views:RulesView />
         </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:SettingsViewModel}">
+            <views:SettingsView />
+        </DataTemplate>
     </Window.Resources>
     <DockPanel>
         <Border DockPanel.Dock="Top" Background="#FFE8EEF6" Padding="8,6">
@@ -28,6 +31,12 @@
                              GroupName="Navigation"
                              IsChecked="{Binding IsRulesSelected, Mode=OneWay}"
                              Command="{Binding ShowRulesCommand}"
+                             VerticalAlignment="Center"
+                             Margin="0,0,12,0" />
+                <RadioButton Content="Ajustes"
+                             GroupName="Navigation"
+                             IsChecked="{Binding IsSettingsSelected, Mode=OneWay}"
+                             Command="{Binding ShowSettingsCommand}"
                              VerticalAlignment="Center" />
             </StackPanel>
         </Border>

@@ -35,10 +35,21 @@ public class EnforcementServiceTests
             CancellationToken cancellationToken = default)
             => Task.FromResult(AdminPasswordResult.Success);
 
+        public Task<AdminPasswordChangeResult> ChangePasswordAsync(
+            string currentPassword,
+            string newPassword,
+            CancellationToken cancellationToken = default)
+            => Task.FromResult(AdminPasswordChangeResult.Success);
+
         public Task<AdminAuthenticationResult> TryEnterAdminModeAsync(
             string password,
             CancellationToken cancellationToken = default)
             => Task.FromResult(AdminAuthenticationResult.Success);
+
+        public Task<bool> VerifyPasswordAsync(
+            string password,
+            CancellationToken cancellationToken = default)
+            => Task.FromResult(false);
 
         public void ExitAdminMode()
         {

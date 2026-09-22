@@ -139,6 +139,170 @@ public class AdminAuthServiceTests
     }
 
     [Fact]
+    public async Task ChangePassword_CorrectCurrent_SucceedsAndOnlyNewPasswordVerifies()
+    {
+        var (service, _, _) = CreateService();
+        await service.SetPasswordAsync(ValidPassword);
+        service.ExitAdminMode();
+
+        var result = await service.ChangePasswordAsync(ValidPassword, "nueva-clave-2026");
+
+        Assert.Equal(AdminPasswordChangeResult.Success, result);
+        Assert.Equal(AdminAuthenticationResult.InvalidPassword,
+            await service.TryEnterAdminModeAsync(ValidPassword));
+        Assert.Equal(AdminAuthenticationResult.Success,
+            await service.TryEnterAdminModeAsync("nueva-clave-2026"));
+    }
+
+    [Fact]
+    public async Task ChangePassword_WrongCurrent_ReturnsInvalidPasswordAndStoresNothing()
+    {
+        var (service, store, _) = CreateService();
+        await service.SetPasswordAsync(ValidPassword);
+        service.ExitAdminMode();
+
+        var storedBefore = store.RawValues[AdminAuthService.PasswordHashSettingKey];
+
+        var result = await service.ChangePasswordAsync("wrong-password", "nueva-clave-2026");
+
+        Assert.Equal(AdminPasswordChangeResult.InvalidPassword, result);
+        Assert.Equal(storedBefore, store.RawValues[AdminAuthService.PasswordHashSettingKey]);
+        Assert.Equal(AdminAuthenticationResult.Success,
+            await service.TryEnterAdminModeAsync(ValidPassword));
+    }
+
+    [Fact]
+    public async Task ChangePassword_BeforeSetup_ReturnsNotConfigured()
+    {
+        var (service, store, _) = CreateService();
+
+        var result = await service.ChangePasswordAsync("cualquiera", "nueva-clave-2026");
+
+        Assert.Equal(AdminPasswordChangeResult.NotConfigured, result);
+        Assert.Empty(store.RawValues);
+    }
+
+    [Theory]
+    [InlineData("abc")]
+    [InlineData("       ")]
+    public async Task ChangePassword_WeakNewPassword_IsRejectedAndOriginalStillValid(string newPassword)
+    {
+        var (service, _, _) = CreateService();
+        await service.SetPasswordAsync(ValidPassword);
+        service.ExitAdminMode();
+
+        var result = await service.ChangePasswordAsync(ValidPassword, newPassword);
+
+        Assert.NotEqual(AdminPasswordChangeResult.Success, result);
+        Assert.Equal(AdminAuthenticationResult.Success,
+            await service.TryEnterAdminModeAsync(ValidPassword));
+    }
+
+    [Fact]
+    public async Task ChangePassword_Success_KeepsAdminModeActive()
+    {
+        var (service, _, clock) = CreateService(TimeSpan.FromMinutes(5));
+        await service.SetPasswordAsync(ValidPassword);
+        Assert.True(service.IsAdminMode);
+
+        clock.UtcNow = clock.UtcNow + TimeSpan.FromMinutes(2);
+
+        var result = await service.ChangePasswordAsync(ValidPassword, "nueva-clave-2026");
+
+        Assert.Equal(AdminPasswordChangeResult.Success, result);
+        Assert.True(service.IsAdminMode);
+    }
+
+    [Fact]
+    public async Task VerifyPassword_CorrectReturnsTrueAndWrongReturnsFalse_WithoutAdminMode()
+    {
+        var (service, _, _) = CreateService();
+        await service.SetPasswordAsync(ValidPassword);
+        service.ExitAdminMode();
+
+        Assert.True(await service.VerifyPasswordAsync(ValidPassword));
+        Assert.False(service.IsAdminMode);
+
+        Assert.False(await service.VerifyPasswordAsync("wrong-password"));
+        Assert.False(service.IsAdminMode);
+    }
+
+    [Fact]
+    public async Task TryEnterAdminMode_FifthFailure_LocksForThirtySeconds()
+    {
+        var (service, _, clock) = CreateService();
+        await service.SetPasswordAsync(ValidPassword);
+        service.ExitAdminMode();
+
+        for (var attempt = 1; attempt <= 4; attempt++)
+        {
+            Assert.Equal(AdminAuthenticationResult.InvalidPassword,
+                await service.TryEnterAdminModeAsync("wrong-password"));
+        }
+
+        Assert.Equal(AdminAuthenticationResult.InvalidPassword,
+            await service.TryEnterAdminModeAsync("wrong-password"));
+
+        Assert.Equal(AdminAuthenticationResult.LockedOut,
+            await service.TryEnterAdminModeAsync(ValidPassword));
+
+        clock.UtcNow = clock.UtcNow + TimeSpan.FromSeconds(30) - TimeSpan.FromSeconds(1);
+        Assert.Equal(AdminAuthenticationResult.LockedOut,
+            await service.TryEnterAdminModeAsync(ValidPassword));
+
+        clock.UtcNow = clock.UtcNow + TimeSpan.FromSeconds(1);
+        Assert.Equal(AdminAuthenticationResult.Success,
+            await service.TryEnterAdminModeAsync(ValidPassword));
+    }
+
+    [Fact]
+    public async Task TryEnterAdminMode_SuccessBeforeThreshold_ResetsFailureCounter()
+    {
+        var (service, _, _) = CreateService();
+        await service.SetPasswordAsync(ValidPassword);
+        service.ExitAdminMode();
+
+        for (var attempt = 1; attempt <= 4; attempt++)
+        {
+            await service.TryEnterAdminModeAsync("wrong-password");
+        }
+
+        Assert.Equal(AdminAuthenticationResult.Success,
+            await service.TryEnterAdminModeAsync(ValidPassword));
+        service.ExitAdminMode();
+
+        for (var attempt = 1; attempt <= 4; attempt++)
+        {
+            Assert.Equal(AdminAuthenticationResult.InvalidPassword,
+                await service.TryEnterAdminModeAsync("wrong-password"));
+        }
+
+        Assert.Equal(AdminAuthenticationResult.Success,
+            await service.TryEnterAdminModeAsync(ValidPassword));
+    }
+
+    [Fact]
+    public async Task ChangePassword_WhileLockedOut_ReturnsLockedOut()
+    {
+        var (service, _, clock) = CreateService();
+        await service.SetPasswordAsync(ValidPassword);
+        service.ExitAdminMode();
+
+        for (var attempt = 1; attempt <= 5; attempt++)
+        {
+            await service.TryEnterAdminModeAsync("wrong-password");
+        }
+
+        Assert.Equal(AdminPasswordChangeResult.LockedOut,
+            await service.ChangePasswordAsync(ValidPassword, "nueva-clave-2026"));
+
+        clock.UtcNow = clock.UtcNow + AdminAuthService.LockoutDuration;
+
+        Assert.Equal(AdminPasswordChangeResult.Success,
+            await service.ChangePasswordAsync(ValidPassword, "nueva-clave-2026"));
+    }
+
+    [Fact]
     public async Task NewServiceInstance_VerifiesPasswordAgainstPersistedHash()
     {
         var store = new InMemoryAppSettingsStore();

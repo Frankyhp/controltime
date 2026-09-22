@@ -1,6 +1,7 @@
 ﻿using System.Windows;
 using ControlTime.App.Services;
 using ControlTime.App.ViewModels;
+using ControlTime.App.Views;
 using ControlTime.Core;
 using ControlTime.Core.Abstractions;
 using ControlTime.Core.Domain;
@@ -142,11 +143,24 @@ public partial class App : Application
 
     private void HandleTrayExit()
     {
-        if (_services?.GetService<MainWindow>() is { } window)
+        if (_services?.GetRequiredService<IAdminAuthService>() is not { } authService)
         {
-            window.CloseForShutdown();
+            return;
         }
 
+        MainWindow? window = _services.GetService<MainWindow>();
+
+        var prompt = new AdminExitWindow(authService)
+        {
+            Owner = window is { IsVisible: true } ? window : null,
+        };
+
+        if (prompt.ShowDialog() != true)
+        {
+            return;
+        }
+
+        window?.CloseForShutdown();
         Shutdown();
     }
 
@@ -212,6 +226,12 @@ public partial class App : Application
 
         services.AddTransient<DashboardViewModel>();
         services.AddTransient<RulesViewModel>();
+        services.AddTransient<SettingsViewModel>(provider => new SettingsViewModel(
+            provider.GetRequiredService<IAdminAuthService>(),
+            provider.GetRequiredService<IAppSettingsStore>(),
+            provider.GetRequiredService<IAutostartRegistrar>(),
+            provider.GetRequiredService<ILogger<SettingsViewModel>>(),
+            IsEnforcementEnabled()));
         services.AddTransient<MainViewModel>();
         services.AddSingleton<MainWindow>();
 

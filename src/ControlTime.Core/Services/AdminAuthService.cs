@@ -7,7 +7,8 @@ public enum AdminAuthenticationResult
 {
     Success,
     NotConfigured,
-    InvalidPassword
+    InvalidPassword,
+    LockedOut
 }
 
 public enum AdminPasswordResult
@@ -18,6 +19,16 @@ public enum AdminPasswordResult
     InvalidCharacters
 }
 
+public enum AdminPasswordChangeResult
+{
+    Success,
+    NotConfigured,
+    InvalidPassword,
+    TooShort,
+    InvalidCharacters,
+    LockedOut
+}
+
 public interface IAdminAuthService
 {
     bool IsAdminMode { get; }
@@ -26,7 +37,14 @@ public interface IAdminAuthService
 
     Task<AdminPasswordResult> SetPasswordAsync(string password, CancellationToken cancellationToken = default);
 
+    Task<AdminPasswordChangeResult> ChangePasswordAsync(
+        string currentPassword,
+        string newPassword,
+        CancellationToken cancellationToken = default);
+
     Task<AdminAuthenticationResult> TryEnterAdminModeAsync(string password, CancellationToken cancellationToken = default);
+
+    Task<bool> VerifyPasswordAsync(string password, CancellationToken cancellationToken = default);
 
     void ExitAdminMode();
 }
@@ -35,7 +53,11 @@ public sealed class AdminAuthService : IAdminAuthService
 {
     public const string PasswordHashSettingKey = "admin.password.hash";
 
+    public const int MaxFailedAuthenticationAttempts = 5;
+
     public static readonly TimeSpan DefaultAdminSessionDuration = TimeSpan.FromMinutes(5);
+
+    public static readonly TimeSpan LockoutDuration = TimeSpan.FromSeconds(30);
 
     private readonly IAppSettingsStore _settingsStore;
     private readonly IPasswordHasher _passwordHasher;
@@ -43,6 +65,8 @@ public sealed class AdminAuthService : IAdminAuthService
     private readonly TimeSpan _adminSessionDuration;
 
     private DateTimeOffset? _adminModeExpiresAt;
+    private int _consecutiveFailedAttempts;
+    private DateTimeOffset? _lockoutExpiresAt;
 
     public AdminAuthService(
         IAppSettingsStore settingsStore,
@@ -98,9 +122,58 @@ public sealed class AdminAuthService : IAdminAuthService
         return AdminPasswordResult.Success;
     }
 
+    public async Task<AdminPasswordChangeResult> ChangePasswordAsync(
+        string currentPassword,
+        string newPassword,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(currentPassword);
+        ArgumentNullException.ThrowIfNull(newPassword);
+
+        if (IsLockedOut)
+        {
+            return AdminPasswordChangeResult.LockedOut;
+        }
+
+        var storedHash = await _settingsStore.GetAsync(PasswordHashSettingKey, cancellationToken);
+
+        if (string.IsNullOrWhiteSpace(storedHash))
+        {
+            return AdminPasswordChangeResult.NotConfigured;
+        }
+
+        if (!_passwordHasher.Verify(currentPassword, storedHash))
+        {
+            RegisterFailedAttempt();
+            return AdminPasswordChangeResult.InvalidPassword;
+        }
+
+        RegisterSuccessfulAttempt();
+        EnterAdminMode();
+
+        if (newPassword.Length < MinPasswordLength)
+        {
+            return AdminPasswordChangeResult.TooShort;
+        }
+
+        if (newPassword.Trim().Length == 0)
+        {
+            return AdminPasswordChangeResult.InvalidCharacters;
+        }
+
+        await _settingsStore.SetAsync(PasswordHashSettingKey, _passwordHasher.Hash(newPassword), cancellationToken);
+
+        return AdminPasswordChangeResult.Success;
+    }
+
     public async Task<AdminAuthenticationResult> TryEnterAdminModeAsync(string password, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(password);
+
+        if (IsLockedOut)
+        {
+            return AdminAuthenticationResult.LockedOut;
+        }
 
         var storedHash = await _settingsStore.GetAsync(PasswordHashSettingKey, cancellationToken);
 
@@ -111,17 +184,65 @@ public sealed class AdminAuthService : IAdminAuthService
 
         if (!_passwordHasher.Verify(password, storedHash))
         {
+            RegisterFailedAttempt();
             return AdminAuthenticationResult.InvalidPassword;
         }
 
+        RegisterSuccessfulAttempt();
         EnterAdminMode();
         return AdminAuthenticationResult.Success;
+    }
+
+    public async Task<bool> VerifyPasswordAsync(string password, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(password);
+
+        if (IsLockedOut)
+        {
+            return false;
+        }
+
+        var storedHash = await _settingsStore.GetAsync(PasswordHashSettingKey, cancellationToken);
+
+        if (string.IsNullOrWhiteSpace(storedHash))
+        {
+            return false;
+        }
+
+        if (!_passwordHasher.Verify(password, storedHash))
+        {
+            RegisterFailedAttempt();
+            return false;
+        }
+
+        RegisterSuccessfulAttempt();
+        return true;
     }
 
     public void ExitAdminMode() => _adminModeExpiresAt = null;
 
     private void EnterAdminMode() =>
         _adminModeExpiresAt = _timeProvider.GetUtcNow() + _adminSessionDuration;
+
+    private bool IsLockedOut =>
+        _lockoutExpiresAt is DateTimeOffset expiresAt && _timeProvider.GetUtcNow() < expiresAt;
+
+    private void RegisterFailedAttempt()
+    {
+        _consecutiveFailedAttempts++;
+
+        if (_consecutiveFailedAttempts >= MaxFailedAuthenticationAttempts)
+        {
+            _lockoutExpiresAt = _timeProvider.GetUtcNow() + LockoutDuration;
+            _consecutiveFailedAttempts = 0;
+        }
+    }
+
+    private void RegisterSuccessfulAttempt()
+    {
+        _consecutiveFailedAttempts = 0;
+        _lockoutExpiresAt = null;
+    }
 
     public const int MinPasswordLength = 8;
 }

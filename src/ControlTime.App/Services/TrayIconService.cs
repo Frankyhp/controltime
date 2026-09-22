@@ -25,7 +25,6 @@ public sealed class TrayIconService : INotifier, IDisposable
     private readonly NotifyIcon _notifyIcon;
     private readonly ToolStripMenuItem _stateItem = new("Estado: —") { Enabled = false };
     private readonly ToolStripMenuItem _remainingItem = new("Tiempo restante: —") { Enabled = false };
-    private readonly ToolStripMenuItem _autoStartItem = new("Iniciar con Windows");
 
     private bool _disposed;
 
@@ -53,17 +52,11 @@ public sealed class TrayIconService : INotifier, IDisposable
         ToolStripMenuItem exitItem = new("Salir de ControlTime");
         exitItem.Click += (_, _) => ExitRequested?.Invoke();
 
-        _autoStartItem.Click += OnToggleAutoStartClick;
-
-        _autoStartItem.Checked = SafeIsAutoStartEnabled();
-
         menu.Items.AddRange([
             openItem,
             new ToolStripSeparator(),
             _stateItem,
             _remainingItem,
-            new ToolStripSeparator(),
-            _autoStartItem,
             new ToolStripSeparator(),
             exitItem,
         ]);
@@ -129,8 +122,6 @@ public sealed class TrayIconService : INotifier, IDisposable
         {
             _logger.LogError(ex, "No se pudo sincronizar el arranque automático con Windows.");
         }
-
-        _autoStartItem.Checked = SafeIsAutoStartEnabled();
     }
 
     public void Notify(UsageWarning warning)
@@ -178,45 +169,6 @@ public sealed class TrayIconService : INotifier, IDisposable
         }
 
         _mainWindow.Activate();
-    }
-
-    private async void OnToggleAutoStartClick(object? sender, EventArgs e)
-    {
-        bool desired = !_autoStartItem.Checked;
-
-        try
-        {
-            if (desired)
-            {
-                _autostartRegistrar.Enable();
-            }
-            else
-            {
-                _autostartRegistrar.Disable();
-            }
-
-            await _appSettingsStore.SetAsync(AutoStartSettingKey, desired ? "true" : "false");
-
-            _autoStartItem.Checked = desired;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "No se pudo actualizar el arranque automático.");
-            _autoStartItem.Checked = SafeIsAutoStartEnabled();
-        }
-    }
-
-    private bool SafeIsAutoStartEnabled()
-    {
-        try
-        {
-            return _autostartRegistrar.IsEnabled();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "No se pudo leer el arranque automático de Windows.");
-            return false;
-        }
     }
 
     private static string FormatHoursMinutes(TimeSpan time) =>

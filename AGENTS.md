@@ -58,6 +58,8 @@ Phase 14 — Enforcement is complete.
 
 Phase 15 — System Tray and Startup is complete.
 
+Phase 16 — Administration and Configuration Hardening is complete.
+
 Created:
 
 * `ControlTime.slnx`
@@ -134,11 +136,17 @@ Created:
 * `ControlTime.Infrastructure` `WindowsAutoStartRegistry` (`Windows/`, `HKCU\...\Run` value, no admin privileges)
 * `ControlTime.App` `TrayIconService` (`Services/`, replaces `BalloonTipNotifier`): single visible `NotifyIcon` implementing `INotifier`, context menu (Abrir / estado / tiempo restante / "Iniciar con Windows" toggle / Salir), tooltip mirrors live status; closing the main window now hides it (`OnExplicitShutdown` + cancelled `OnClosing`); real exit only via tray "Salir de ControlTime"; autostart preference persisted under app settings key `AutoStartEnabled` and synced on startup
 
+* `docs/phases/phase-16.md`
+* `ControlTime.Core` `AdminAuthService` hardening: `ChangePasswordAsync` (`AdminPasswordChangeResult`), side-effect-free `VerifyPasswordAsync`, in-memory attempt lockout (5 failures / 30 seconds via injected `TimeProvider`)
+* `ControlTime.App` Settings screen (`Views/SettingsView`, `ViewModels/SettingsViewModel`, third tab "Ajustes"): change-password form, admin-gated "Iniciar con Windows" toggle, read-only enforcement status
+* `ControlTime.App` controlled exit: tray "Salir" now requires the administrator password via `Views/AdminExitWindow` (`VerifyPasswordAsync`, never enters admin mode)
+* `ControlTime.App` tray menu no longer contains the autostart toggle; startup preference sync on startup unchanged
+
 Current phase:
 
-`Phase 16 — Administration and Configuration Hardening` (not started)
+`Phase 17 — Windows Service Architecture` (not started)
 
-Do not implement functionality belonging to Phase 16 or later.
+Do not implement functionality belonging to Phase 17 or later.
 
 ---
 

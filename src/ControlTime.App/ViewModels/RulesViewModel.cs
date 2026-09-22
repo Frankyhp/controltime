@@ -383,6 +383,10 @@ public sealed class RulesViewModel : ObservableObject
             case AdminAuthenticationResult.ServiceUnavailable:
                 ErrorMessage = "El servicio de ControlTime no está disponible.";
                 break;
+            case AdminAuthenticationResult.CorruptedPassword:
+                ErrorMessage = "La configuración de la contraseña de administrador está dañada. " +
+                    "Repare o reinstale los datos de ControlTime.";
+                break;
         }
     }
 
@@ -581,6 +585,10 @@ public sealed class RulesViewModel : ObservableObject
                 return;
             case AdminAuthenticationResult.ServiceUnavailable:
                 ErrorMessage = "El servicio de ControlTime no está disponible.";
+                return;
+            case AdminAuthenticationResult.CorruptedPassword:
+                ErrorMessage = "La configuración de la contraseña de administrador está dañada. " +
+                    "Repare o reinstale los datos de ControlTime.";
                 return;
         }
 

@@ -3,6 +3,7 @@ using ControlTime.Core.Abstractions;
 using ControlTime.Core.Services;
 using ControlTime.Infrastructure;
 using ControlTime.Infrastructure.Ipc;
+using ControlTime.Infrastructure.Logging;
 using ControlTime.Infrastructure.Windows;
 using ControlTime.Service;
 using Microsoft.EntityFrameworkCore;
@@ -16,6 +17,8 @@ builder.Services.AddWindowsService(options =>
 {
     options.ServiceName = "ControlTimeService";
 });
+
+builder.Logging.AddControlTimeFileLogs();
 
 ControlTimeStorage.EnsureDatabaseDirectory();
 
@@ -64,6 +67,7 @@ builder.Services.AddSingleton<EnforcementService>();
 builder.Services.AddSingleton(provider => new MonitoringLoop(
     provider.GetRequiredService<MonitoringService>(),
     provider.GetRequiredService<EnforcementService>(),
+    provider.GetRequiredService<UsageTrackingService>(),
     provider.GetRequiredService<IDbContextFactory<ControlTimeDbContext>>(),
     provider.GetRequiredService<ILogger<MonitoringLoop>>(),
     MonitoringLoop.IsEnforcementEnabled()));

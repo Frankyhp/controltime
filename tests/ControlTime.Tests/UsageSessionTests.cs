@@ -64,6 +64,18 @@ public class UsageSessionTests
     }
 
     [Fact]
+    public void TryClose_SameInstantAsStart_ClosesWithZeroDuration()
+    {
+        UsageSession.TryCreateOpen(Start, out var open);
+
+        var result = open!.TryClose(Start, out var closed);
+
+        Assert.True(result.Success, result.Error);
+        Assert.False(closed!.IsOpen);
+        Assert.Equal(TimeSpan.Zero, closed.Duration);
+    }
+
+    [Fact]
     public void TryClose_AlreadyClosed_Rejected()
     {
         UsageSession.TryCreate(Start, Start.AddMinutes(30), out var closedSession);

@@ -303,6 +303,63 @@ public class AdminAuthServiceTests
     }
 
     [Fact]
+    public async Task TryEnterAdminMode_CorruptedStoredHash_ReturnsCorruptedAndStaysLocked()
+    {
+        var (service, store, _) = CreateService();
+        store.RawValues[AdminAuthService.PasswordHashSettingKey] = "dato-corrupto";
+
+        var result = await service.TryEnterAdminModeAsync(ValidPassword);
+
+        Assert.Equal(AdminAuthenticationResult.CorruptedPassword, result);
+        Assert.False(service.IsAdminMode);
+    }
+
+    [Fact]
+    public async Task TryEnterAdminMode_CorruptedStoredHash_DoesNotCountTowardLockout()
+    {
+        var (service, store, _) = CreateService();
+        store.RawValues[AdminAuthService.PasswordHashSettingKey] = "dato-corrupto";
+
+        for (var attempt = 1; attempt <= 10; attempt++)
+        {
+            Assert.Equal(AdminAuthenticationResult.CorruptedPassword,
+                await service.TryEnterAdminModeAsync(ValidPassword));
+        }
+
+        Assert.Equal(AdminAuthenticationResult.CorruptedPassword,
+            await service.TryEnterAdminModeAsync(ValidPassword));
+    }
+
+    [Fact]
+    public async Task ChangePassword_CorruptedStoredHash_ReturnsCorrupted()
+    {
+        var (service, store, _) = CreateService();
+        store.RawValues[AdminAuthService.PasswordHashSettingKey] = "dato-corrupto";
+
+        var result = await service.ChangePasswordAsync(ValidPassword, "nueva-clave-2026");
+
+        Assert.Equal(AdminPasswordChangeResult.CorruptedPassword, result);
+        Assert.Equal("dato-corrupto", store.RawValues[AdminAuthService.PasswordHashSettingKey]);
+    }
+
+    [Fact]
+    public async Task VerifyPassword_CorruptedStoredHash_ReturnsFalseWithoutLockout()
+    {
+        var (service, store, _) = CreateService();
+        store.RawValues[AdminAuthService.PasswordHashSettingKey] = "dato-corrupto";
+
+        for (var attempt = 1; attempt <= 10; attempt++)
+        {
+            Assert.False(await service.VerifyPasswordAsync(ValidPassword));
+        }
+
+        store.RawValues[AdminAuthService.PasswordHashSettingKey] =
+            new Pbkdf2PasswordHasher().Hash(ValidPassword);
+
+        Assert.True(await service.VerifyPasswordAsync(ValidPassword));
+    }
+
+    [Fact]
     public async Task NewServiceInstance_VerifiesPasswordAgainstPersistedHash()
     {
         var store = new InMemoryAppSettingsStore();

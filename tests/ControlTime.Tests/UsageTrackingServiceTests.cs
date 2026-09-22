@@ -98,12 +98,84 @@ public class UsageTrackingServiceTests
     }
 
     [Fact]
-    public async Task Close_WithNoUsageSinceStart_DiscardsSession()
+    public async Task Close_WithNoUsageSinceStart_ClosesZeroLengthInsteadOfDeleting()
     {
         UsageSession.TryCreateOpen(At(0), out var orphan);
         _store.Sessions.Add(orphan!);
 
         await _service.TickAsync(Status(ActivityState.Locked, At(-5), At(10)));
+
+        var session = Assert.Single(_store.Sessions);
+        Assert.False(session.IsOpen);
+        Assert.Equal(At(0), session.EndedAt);
+        Assert.Equal(TimeSpan.Zero, session.Duration);
+        Assert.Null(_service.OpenSession);
+    }
+
+    [Fact]
+    public async Task BackwardClockJump_WhileSessionOpen_ClosesAtStartWithoutLosingSession()
+    {
+        await _service.TickAsync(Status(ActivityState.Active, At(0), At(0)));
+
+        await _service.TickAsync(Status(ActivityState.Idle, At(-30), At(-25)));
+
+        var session = Assert.Single(_store.Sessions);
+        Assert.False(session.IsOpen);
+        Assert.Equal(At(0), session.StartedAt);
+        Assert.Equal(At(0), session.EndedAt);
+        Assert.Equal(TimeSpan.Zero, session.Duration);
+    }
+
+    [Fact]
+    public async Task BackwardClockJump_KeepsDailyUsageNonNegative()
+    {
+        await _service.TickAsync(Status(ActivityState.Active, At(0), At(0)));
+        await _service.TickAsync(Status(ActivityState.Idle, At(-30), At(-25)));
+
+        var dayStart = new DateTimeOffset(
+            DateOnly.FromDateTime(Base.Date).ToDateTime(TimeOnly.MinValue),
+            TimeSpan.Zero);
+
+        var usage = UsageCalculator.GetUsageForDay(
+            _store.Sessions,
+            dayStart,
+            dayStart.AddDays(1),
+            asOf: At(60));
+
+        Assert.True(usage >= TimeSpan.Zero);
+        Assert.Equal(TimeSpan.Zero, usage);
+    }
+
+    [Fact]
+    public async Task CloseOpenSessionAsync_ClosesOpenSessionAtGivenInstant()
+    {
+        await _service.TickAsync(Status(ActivityState.Active, At(0), At(0)));
+
+        await _service.CloseOpenSessionAsync(At(12));
+
+        var session = Assert.Single(_store.Sessions);
+        Assert.False(session.IsOpen);
+        Assert.Equal(At(12), session.EndedAt);
+        Assert.Null(_service.OpenSession);
+    }
+
+    [Fact]
+    public async Task CloseOpenSessionAsync_BeforeStart_ClosesAtStartWithoutDeleting()
+    {
+        UsageSession.TryCreateOpen(At(0), out var orphan);
+        _store.Sessions.Add(orphan!);
+
+        await _service.CloseOpenSessionAsync(At(-15));
+
+        var session = Assert.Single(_store.Sessions);
+        Assert.False(session.IsOpen);
+        Assert.Equal(At(0), session.EndedAt);
+    }
+
+    [Fact]
+    public async Task CloseOpenSessionAsync_WithoutOpenSession_DoesNothing()
+    {
+        await _service.CloseOpenSessionAsync(At(10));
 
         Assert.Empty(_store.Sessions);
         Assert.Null(_service.OpenSession);

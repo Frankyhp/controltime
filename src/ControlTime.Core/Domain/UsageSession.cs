@@ -58,12 +58,19 @@ public sealed class UsageSession
 
     public DomainResult TryClose(DateTimeOffset endedAt, out UsageSession? closed)
     {
-        if (IsOpen)
+        closed = null;
+
+        if (!IsOpen)
         {
-            return UsageSession.TryCreate(Id, StartedAt, endedAt, out closed);
+            return DomainResult.Invalid("Only an open session can be closed.");
         }
 
-        closed = null;
-        return DomainResult.Invalid("Only an open session can be closed.");
+        if (endedAt < StartedAt)
+        {
+            return DomainResult.Invalid("Session end must not be earlier than session start.");
+        }
+
+        closed = new UsageSession(Id, StartedAt, endedAt);
+        return DomainResult.Ok;
     }
 }

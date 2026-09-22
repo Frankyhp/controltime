@@ -131,6 +131,7 @@ public sealed class ServiceClientHost : IDisposable
             if (_serviceAvailable != true)
             {
                 _serviceAvailable = true;
+                _logger.LogInformation("El servicio de ControlTime está disponible de nuevo.");
                 _dispatcher?.BeginInvoke(() => AvailabilityChanged?.Invoke(true));
             }
 
@@ -157,6 +158,7 @@ public sealed class ServiceClientHost : IDisposable
         }
 
         _serviceAvailable = false;
+        _logger.LogWarning("El servicio de ControlTime no está disponible.");
         _dispatcher?.BeginInvoke(() => AvailabilityChanged?.Invoke(false));
     }
 }

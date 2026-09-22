@@ -1,17 +1,39 @@
 using ControlTime.Core.Abstractions;
 using ControlTime.Core.Domain;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace ControlTime.Infrastructure;
 
-public class SqliteUsageRuleStore(IDbContextFactory<ControlTimeDbContext> factory) : IUsageRuleStore
+public class SqliteUsageRuleStore(
+    IDbContextFactory<ControlTimeDbContext> factory,
+    ILogger<SqliteUsageRuleStore>? logger = null) : IUsageRuleStore
 {
     public async Task<IReadOnlyList<UsageRule>> GetAllAsync(CancellationToken cancellationToken = default)
     {
         await using ControlTimeDbContext context = factory.CreateDbContext();
 
         var entities = await context.UsageRules.AsNoTracking().ToListAsync(cancellationToken);
-        return entities.Select(UsageRuleMapper.ToDomain).ToList();
+
+        List<UsageRule> rules = [];
+
+        foreach (var entity in entities)
+        {
+            try
+            {
+                rules.Add(UsageRuleMapper.ToDomain(entity));
+            }
+            catch (Exception ex)
+            {
+                logger?.LogWarning(
+                    ex,
+                    "Se ha ignorado la regla persistida '{RuleId}' ({RuleName}) por contener datos inválidos.",
+                    entity.Id,
+                    entity.Name);
+            }
+        }
+
+        return rules;
     }
 
     public async Task AddAsync(UsageRule rule, CancellationToken cancellationToken = default)

@@ -166,6 +166,14 @@ Created:
 * `ControlTime.Core` `ITimeGrantStore` extended with `GetGrantsInRangeAsync` (implemented in `SqliteTimeGrantStore`)
 * `ControlTime.App` Historial tab (`Views/HistoryView`, `ViewModels/UsageHistoryViewModel`): week-total card, 14-day list (Día / Uso / Bonus, "Hoy"/"Ayer" labels), sessions of the selected day, manual refresh; App registers `IUsageSessionStore` read-only (Service remains sole session writer)
 
+* `docs/phases/phase-20.md`
+* `ControlTime.Infrastructure` `Logging/`: `ControlTimeFileLoggerProvider` (rolling file logs in `%PROGRAMDATA%\ControlTime\logs`, one file per day per process, 10 MB cap with sequence suffix, 14-day retention, `Information`+, never throws into callers) and `AddControlTimeFileLogs()`; registered in App and Service logging
+* `ControlTime.Core` clock-jump safety: `UsageSession.TryClose` accepts closing at exactly `StartedAt` (zero-length session; `TryCreate` stays strict); `UsageTrackingService` clamps backward-clock-jump closes to `StartedAt` with a warning instead of deleting the session, gained an optional logger and `CloseOpenSessionAsync` for ordered shutdown; Core now references `Microsoft.Extensions.Logging.Abstractions` (abstractions only)
+* `ControlTime.Core` corrupted admin password: `IPasswordHasher.IsValidFormat` (shared format parse in `Pbkdf2PasswordHasher`), new `CorruptedPassword` results in `AdminAuthenticationResult`/`AdminPasswordChangeResult` (no admin mode, no lockout counting, settings untouched); surfaced as an explicit message in Rules/Settings unlock and change-password
+* `ControlTime.Infrastructure` `SqliteUsageRuleStore.GetAllAsync` per-row tolerance: invalid persisted rows are logged and skipped, never fail the whole load
+* `ControlTime.App` crash tolerance: `DispatcherUnhandledException` + `TaskScheduler.UnobservedTaskException` handlers (log `Critical`, keep the presentation-only App alive); startup/shutdown/tray-exit audit logs; `ServiceClientHost` logs Service availability transitions
+* `ControlTime.Service` fail-safe startup: `MonitoringLoop` prepares the database with 6 attempts / 5 s delay and on final failure logs `Critical` and stays idle (no usage writes, no enforcement, App shows Service unavailable) instead of dying silently; `StopAsync` closes the open usage session at the last known `LastInputAt` (orphan adoption remains the backstop)
+
 Phase 17 was split into `Phase 17a — Windows Service Foundation` and `Phase 17b — Service IPC and App Client`.
 
 Phase 17a — Windows Service Foundation is complete.
@@ -176,11 +184,13 @@ Phase 18 — User Session Integration is complete.
 
 Phase 19 — Usage History UI is complete.
 
+Phase 20 — Reliability and Recovery is complete.
+
 Current phase:
 
-`Phase 20 — Reliability and Recovery` (not started)
+`Phase 21 — Installer and Distribution` (not started)
 
-Do not implement functionality belonging to Phase 20 or later without planning Phase 20 first.
+Do not implement functionality belonging to Phase 21 or later without planning Phase 21 first.
 
 ---
 

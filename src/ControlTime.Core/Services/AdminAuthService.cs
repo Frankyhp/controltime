@@ -9,7 +9,8 @@ public enum AdminAuthenticationResult
     NotConfigured,
     InvalidPassword,
     LockedOut,
-    ServiceUnavailable
+    ServiceUnavailable,
+    CorruptedPassword
 }
 
 public enum AdminPasswordResult
@@ -29,7 +30,8 @@ public enum AdminPasswordChangeResult
     TooShort,
     InvalidCharacters,
     LockedOut,
-    ServiceUnavailable
+    ServiceUnavailable,
+    CorruptedPassword
 }
 
 public interface IAdminAuthService
@@ -147,6 +149,11 @@ public sealed class AdminAuthService : IAdminAuthService
             return AdminPasswordChangeResult.NotConfigured;
         }
 
+        if (!_passwordHasher.IsValidFormat(storedHash))
+        {
+            return AdminPasswordChangeResult.CorruptedPassword;
+        }
+
         if (!_passwordHasher.Verify(currentPassword, storedHash))
         {
             RegisterFailedAttempt();
@@ -187,6 +194,11 @@ public sealed class AdminAuthService : IAdminAuthService
             return AdminAuthenticationResult.NotConfigured;
         }
 
+        if (!_passwordHasher.IsValidFormat(storedHash))
+        {
+            return AdminAuthenticationResult.CorruptedPassword;
+        }
+
         if (!_passwordHasher.Verify(password, storedHash))
         {
             RegisterFailedAttempt();
@@ -210,6 +222,11 @@ public sealed class AdminAuthService : IAdminAuthService
         var storedHash = await _settingsStore.GetAsync(PasswordHashSettingKey, cancellationToken);
 
         if (string.IsNullOrWhiteSpace(storedHash))
+        {
+            return false;
+        }
+
+        if (!_passwordHasher.IsValidFormat(storedHash))
         {
             return false;
         }

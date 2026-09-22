@@ -51,4 +51,31 @@ public sealed class PasswordHasherTests
     {
         Assert.False(_hasher.Verify("admin-password", "not-a-real-hash"));
     }
+
+    [Fact]
+    public void IsValidFormat_FreshHash_ReturnsTrue()
+    {
+        Assert.True(_hasher.IsValidFormat(_hasher.Hash("admin-password")));
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("not-a-real-hash")]
+    [InlineData("PBKDF2.SHA256.nope.AAAA.AAAA")]
+    [InlineData("PBKDF2.SHA512.100000.QUJD.QUJD")]
+    [InlineData("PBKDF2.SHA256.100000.notbase64!.QUJD")]
+    [InlineData("PBKDF2.SHA256.0.QUJD.QUJD")]
+    public void IsValidFormat_CorruptedValues_ReturnsFalse(string? stored)
+    {
+        Assert.False(_hasher.IsValidFormat(stored));
+    }
+
+    [Fact]
+    public void IsValidFormat_EmptySaltOrKey_ReturnsFalse()
+    {
+        Assert.False(_hasher.IsValidFormat("PBKDF2.SHA256.100000..QUJD"));
+        Assert.False(_hasher.IsValidFormat("PBKDF2.SHA256.100000.QUJD."));
+    }
 }

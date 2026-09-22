@@ -13,8 +13,13 @@ public sealed class MonitoringLoop : BackgroundService
 
     public const string EnforcementDisabledVariable = "CONTROLTIME_ENFORCEMENT";
 
+    public const int DatabasePrepareAttempts = 6;
+
+    public static readonly TimeSpan DatabaseRetryDelay = TimeSpan.FromSeconds(5);
+
     private readonly MonitoringService _monitoringService;
     private readonly EnforcementService _enforcementService;
+    private readonly UsageTrackingService _usageTrackingService;
     private readonly IDbContextFactory<ControlTimeDbContext> _dbContextFactory;
     private readonly ILogger<MonitoringLoop> _logger;
     private readonly bool _enforcementEnabled;
@@ -24,17 +29,20 @@ public sealed class MonitoringLoop : BackgroundService
     public MonitoringLoop(
         MonitoringService monitoringService,
         EnforcementService enforcementService,
+        UsageTrackingService usageTrackingService,
         IDbContextFactory<ControlTimeDbContext> dbContextFactory,
         ILogger<MonitoringLoop> logger,
         bool enforcementEnabled)
     {
         ArgumentNullException.ThrowIfNull(monitoringService);
         ArgumentNullException.ThrowIfNull(enforcementService);
+        ArgumentNullException.ThrowIfNull(usageTrackingService);
         ArgumentNullException.ThrowIfNull(dbContextFactory);
         ArgumentNullException.ThrowIfNull(logger);
 
         _monitoringService = monitoringService;
         _enforcementService = enforcementService;
+        _usageTrackingService = usageTrackingService;
         _dbContextFactory = dbContextFactory;
         _logger = logger;
         _enforcementEnabled = enforcementEnabled;
@@ -50,7 +58,14 @@ public sealed class MonitoringLoop : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        PrepareDatabase();
+        if (!await PrepareDatabaseWithRetriesAsync(stoppingToken))
+        {
+            _logger.LogCritical(
+                "La base de datos de ControlTime no es accesible tras {Attempts} intentos. " +
+                "El servicio permanece inactivo: sin seguimiento de uso, sin enforcement y sin estado para la interfaz.",
+                DatabasePrepareAttempts);
+            return;
+        }
 
         if (!_enforcementEnabled)
         {
@@ -70,6 +85,71 @@ public sealed class MonitoringLoop : BackgroundService
             await TickOnceAsync(stoppingToken);
         }
         while (await timer.WaitForNextTickAsync(stoppingToken));
+    }
+
+    public override async Task StopAsync(CancellationToken cancellationToken)
+    {
+        await CloseOpenUsageSessionOnShutdownAsync();
+        await base.StopAsync(cancellationToken);
+    }
+
+    private async Task CloseOpenUsageSessionOnShutdownAsync()
+    {
+        try
+        {
+            DateTimeOffset closeAt = _lastState?.Activity.LastInputAt ?? DateTimeOffset.UtcNow;
+
+            await _usageTrackingService.CloseOpenSessionAsync(closeAt, CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(
+                ex,
+                "No se pudo cerrar la sesión de uso abierta durante la parada del servicio; " +
+                "se recuperará por adopción en el próximo inicio.");
+        }
+    }
+
+    private async Task<bool> PrepareDatabaseWithRetriesAsync(CancellationToken stoppingToken)
+    {
+        for (int attempt = 1; attempt <= DatabasePrepareAttempts; attempt++)
+        {
+            try
+            {
+                PrepareDatabase();
+
+                if (attempt > 1)
+                {
+                    _logger.LogInformation(
+                        "La base de datos de ControlTime se preparó correctamente en el intento {Attempt}.",
+                        attempt);
+                }
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(
+                    ex,
+                    "No se pudo preparar la base de datos de ControlTime (intento {Attempt}/{Total}).",
+                    attempt,
+                    DatabasePrepareAttempts);
+
+                if (attempt < DatabasePrepareAttempts)
+                {
+                    try
+                    {
+                        await Task.Delay(DatabaseRetryDelay, stoppingToken);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        return false;
+                    }
+                }
+            }
+        }
+
+        return false;
     }
 
     private async Task TickOnceAsync(CancellationToken cancellationToken)

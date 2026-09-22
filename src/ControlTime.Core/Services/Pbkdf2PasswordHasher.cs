@@ -32,36 +32,65 @@ public sealed class Pbkdf2PasswordHasher : IPasswordHasher
         ArgumentException.ThrowIfNullOrWhiteSpace(password);
         ArgumentException.ThrowIfNullOrWhiteSpace(passwordHash);
 
+        if (!TryParse(passwordHash, out int iterations, out byte[]? salt, out byte[]? expectedKey))
+        {
+            return false;
+        }
+
+        byte[] actualKey = DeriveKey(password, salt!, iterations);
+        return CryptographicOperations.FixedTimeEquals(actualKey, expectedKey);
+    }
+
+    public bool IsValidFormat(string? passwordHash)
+        => TryParse(passwordHash, out _, out _, out _);
+
+    private static bool TryParse(
+        string? passwordHash,
+        out int iterations,
+        out byte[]? salt,
+        out byte[]? key)
+    {
+        iterations = 0;
+        salt = null;
+        key = null;
+
+        if (string.IsNullOrWhiteSpace(passwordHash))
+        {
+            return false;
+        }
+
         string[] parts = passwordHash.Split('.');
         if (parts.Length != 5 || parts[0] != "PBKDF2" || parts[1] != Algorithm.ToString())
         {
             return false;
         }
 
-        if (!int.TryParse(parts[2], out int iterations) || iterations <= 0)
+        if (!int.TryParse(parts[2], out iterations) || iterations <= 0)
         {
+            iterations = 0;
             return false;
         }
 
-        byte[] salt;
-        byte[] expectedKey;
         try
         {
             salt = Convert.FromBase64String(parts[3]);
-            expectedKey = Convert.FromBase64String(parts[4]);
+            key = Convert.FromBase64String(parts[4]);
         }
         catch (FormatException)
         {
+            salt = null;
+            key = null;
             return false;
         }
 
-        if (salt.Length == 0 || expectedKey.Length == 0)
+        if (salt.Length == 0 || key.Length == 0)
         {
+            salt = null;
+            key = null;
             return false;
         }
 
-        byte[] actualKey = DeriveKey(password, salt, iterations);
-        return CryptographicOperations.FixedTimeEquals(actualKey, expectedKey);
+        return true;
     }
 
     private static byte[] DeriveKey(string password, byte[] salt, int iterations)

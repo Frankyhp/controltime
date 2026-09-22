@@ -1,5 +1,6 @@
 ﻿using System.Threading;
 using System.Windows;
+using System.Windows.Threading;
 using ControlTime.App.Services;
 using ControlTime.App.ViewModels;
 using ControlTime.App.Views;
@@ -8,6 +9,7 @@ using ControlTime.Core.Domain;
 using ControlTime.Core.Services;
 using ControlTime.Infrastructure;
 using ControlTime.Infrastructure.Ipc;
+using ControlTime.Infrastructure.Logging;
 using ControlTime.Infrastructure.Windows;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -31,6 +33,9 @@ public partial class App : Application
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+
+        Dispatcher.CurrentDispatcher.UnhandledException += OnDispatcherUnhandledException;
+        TaskScheduler.UnobservedTaskException += OnUnobservedTaskException;
 
         // La App es el agente de sesión de usuario (Fase 18): una sola
         // instancia por sesión de Windows evita reportes de actividad y
@@ -72,6 +77,9 @@ public partial class App : Application
             Shutdown();
             return;
         }
+
+        services.GetRequiredService<ILogger<App>>()
+            .LogInformation("ControlTime App iniciado en la sesión de usuario actual.");
 
         ServiceClientHost serviceClientHost = services.GetRequiredService<ServiceClientHost>();
         _serviceClientHost = serviceClientHost;
@@ -142,6 +150,12 @@ public partial class App : Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        if (_services is not null)
+        {
+            _services.GetRequiredService<ILogger<App>>()
+                .LogInformation("ControlTime App finalizado.");
+        }
+
         if (_serviceClientHost is not null)
         {
             if (_trayStateChangedHandler is not null)
@@ -178,15 +192,50 @@ public partial class App : Application
             return;
         }
 
+        _services.GetRequiredService<ILogger<App>>()
+            .LogInformation("Salida de ControlTime confirmada desde la bandeja.");
+
         window?.CloseForShutdown();
         Shutdown();
+    }
+
+    private void OnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
+    {
+        LogUnhandledException(e.Exception, "Excepción no controlada en el hilo de interfaz de ControlTime App.");
+
+        // La App solo presenta: el seguimiento de uso y el enforcement viven
+        // en el Servicio, de modo que continuar es más seguro que perder la
+        // bandeja y los informes de actividad de la sesión.
+        e.Handled = true;
+    }
+
+    private void OnUnobservedTaskException(object? sender, UnobservedTaskExceptionEventArgs e)
+    {
+        LogUnhandledException(e.Exception, "Excepción de tarea no observada en ControlTime App.");
+        e.SetObserved();
+    }
+
+    private void LogUnhandledException(Exception exception, string message)
+    {
+        try
+        {
+            ILoggerFactory? factory = _services?.GetService<ILoggerFactory>();
+
+            factory?.CreateLogger(nameof(App)).LogCritical(exception, message);
+        }
+        catch (Exception logFailure)
+        {
+            System.Diagnostics.Debug.WriteLine($"{message} {logFailure}");
+        }
     }
 
     private static ServiceProvider CreateServices()
     {
         var services = new ServiceCollection();
 
-        services.AddLogging(builder => builder.AddDebug());
+        services.AddLogging(builder => builder
+            .AddDebug()
+            .AddControlTimeFileLogs());
 
         ControlTimeStorage.EnsureDatabaseDirectory();
 

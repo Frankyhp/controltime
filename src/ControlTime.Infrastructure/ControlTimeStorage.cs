@@ -14,6 +14,10 @@ public static class ControlTimeStorage
 
     public static string DatabasePath => Path.Combine(DatabaseDirectory, DatabaseFileName);
 
+    public const string LogDirectoryPrefix = "logs";
+
+    public static string LogDirectory => Path.Combine(DatabaseDirectory, LogDirectoryPrefix);
+
     public static string GetConnectionString(string? databasePath = null)
     {
         var path = databasePath ?? DatabasePath;
@@ -27,6 +31,11 @@ public static class ControlTimeStorage
     public static void EnsureDatabaseDirectory()
     {
         Directory.CreateDirectory(DatabaseDirectory);
+    }
+
+    public static void EnsureLogDirectory()
+    {
+        Directory.CreateDirectory(LogDirectory);
     }
 
     public static bool MigrateLegacyDatabase()

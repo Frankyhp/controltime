@@ -174,6 +174,71 @@ public class UsageCalculatorTests
     }
 
     [Fact]
+    public void GetUsageForDay_FutureOpenSession_Ignored()
+    {
+        UsageSession.TryCreateOpen(MondayEnd.AddHours(2), out var futureOpen);
+
+        var usage = UsageCalculator.GetUsageForDay(
+            [futureOpen!], MondayStart, MondayEnd, asOf: Monday(12, 0));
+
+        Assert.Equal(TimeSpan.Zero, usage);
+    }
+
+    [Fact]
+    public void GetUsageForDay_ZeroLengthSession_CountsAsNothing()
+    {
+        UsageSession.TryCreateOpen(Monday(9, 0), out var open);
+        Assert.True(open!.TryClose(Monday(9, 0), out var closed).Success);
+
+        var usage = UsageCalculator.GetUsageForDay([closed!], MondayStart, MondayEnd);
+
+        Assert.Equal(TimeSpan.Zero, usage);
+    }
+
+    [Fact]
+    public void GetUsageForDay_ClockJumpForwardAcrossMidnight_OpenSessionSplitsCoherently()
+    {
+        UsageSession.TryCreateOpen(Monday(23, 50), out var open);
+
+        var jumpedAsOf = MondayEnd.AddHours(2);
+
+        var previousDay = UsageCalculator.GetUsageForDay([open!], MondayStart, MondayEnd, jumpedAsOf);
+        var newDay = UsageCalculator.GetUsageForDay(
+            [open!], MondayEnd, MondayEnd.AddDays(1), jumpedAsOf);
+
+        Assert.Equal(TimeSpan.FromMinutes(10), previousDay);
+        Assert.Equal(TimeSpan.FromHours(2), newDay);
+    }
+
+    [Fact]
+    public void GetUsageForDay_DayLightSavingShortDay_WindowTotalsStayCoherent()
+    {
+        // Day with a spring-forward shift: 23 elapsed hours between day boundaries.
+        var dayStart = new DateTimeOffset(2026, 3, 29, 0, 0, 0, TimeSpan.FromHours(-5));
+        var dayEnd = new DateTimeOffset(2026, 3, 30, 0, 0, 0, TimeSpan.FromHours(-4));
+
+        UsageSession.TryCreate(dayStart.AddHours(1), dayEnd, out var session);
+
+        var usage = UsageCalculator.GetUsageForDay([session!], dayStart, dayEnd);
+
+        Assert.Equal(TimeSpan.FromHours(22), usage);
+    }
+
+    [Fact]
+    public void GetUsageForDay_DayLightSavingLongDay_WindowTotalsStayCoherent()
+    {
+        // Day with a fall-back shift: 25 elapsed hours between day boundaries.
+        var dayStart = new DateTimeOffset(2026, 10, 25, 0, 0, 0, TimeSpan.FromHours(-4));
+        var dayEnd = new DateTimeOffset(2026, 10, 26, 0, 0, 0, TimeSpan.FromHours(-5));
+
+        UsageSession.TryCreate(dayStart, dayEnd, out var session);
+
+        var usage = UsageCalculator.GetUsageForDay([session!], dayStart, dayEnd);
+
+        Assert.Equal(TimeSpan.FromHours(25), usage);
+    }
+
+    [Fact]
     public void GetUsageForDay_ClosedAndOpenSessions_SummedWithAsOf()
     {
         UsageSession.TryCreateOpen(Monday(11, 0), out var open);

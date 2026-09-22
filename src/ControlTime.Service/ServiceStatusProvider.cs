@@ -8,7 +8,7 @@ namespace ControlTime.Service;
 public sealed class ServiceStatusProvider(
     MonitoringLoop monitoringLoop,
     IAdminAuthService adminAuthService,
-    ActivityReportSink activityReportSink,
+    CompositeActivityMonitor activityMonitor,
     bool enforcementEnabled)
 {
     public async Task<ServiceStatus?> GetStatusAsync(CancellationToken cancellationToken)
@@ -24,6 +24,6 @@ public sealed class ServiceStatusProvider(
             adminAuthService.IsAdminMode,
             hasPassword,
             enforcementEnabled,
-            activityReportSink.HasFreshReport(CompositeActivityMonitor.DefaultReportFreshness));
+            activityMonitor.IsUsingReportedActivity());
     }
 }

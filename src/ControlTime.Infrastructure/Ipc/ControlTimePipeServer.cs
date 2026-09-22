@@ -19,6 +19,7 @@ public sealed class ControlTimePipeServer
     private readonly IAdminAuthService _adminAuthService;
     private readonly ActivityReportSink _sink;
     private readonly Func<CancellationToken, Task<ServiceStatus?>> _statusProvider;
+    private readonly Func<int, int?> _clientSessionResolver;
     private readonly string _pipeName;
     private readonly ILogger<ControlTimePipeServer>? _logger;
 
@@ -27,7 +28,8 @@ public sealed class ControlTimePipeServer
         ActivityReportSink sink,
         Func<CancellationToken, Task<ServiceStatus?>> statusProvider,
         ILogger<ControlTimePipeServer>? logger = null,
-        string pipeName = DefaultPipeName)
+        string pipeName = DefaultPipeName,
+        Func<int, int?>? clientSessionResolver = null)
     {
         ArgumentNullException.ThrowIfNull(adminAuthService);
         ArgumentNullException.ThrowIfNull(sink);
@@ -36,8 +38,21 @@ public sealed class ControlTimePipeServer
         _adminAuthService = adminAuthService;
         _sink = sink;
         _statusProvider = statusProvider;
+        _clientSessionResolver = clientSessionResolver ?? ResolveClientSession;
         _logger = logger;
         _pipeName = pipeName;
+    }
+
+    private static int? ResolveClientSession(int processId)
+    {
+        try
+        {
+            return System.Diagnostics.Process.GetProcessById(processId).SessionId;
+        }
+        catch (Exception)
+        {
+            return null;
+        }
     }
 
     public async Task RunAsync(CancellationToken cancellationToken)
@@ -45,10 +60,23 @@ public sealed class ControlTimePipeServer
         while (!cancellationToken.IsCancellationRequested)
         {
             NamedPipeServerStream stream;
+            Microsoft.Win32.SafeHandles.SafePipeHandle handle;
 
             try
             {
-                stream = CreateStream();
+                // The stream shares ownership of the handle: keep a reference
+                // so the client process can be identified while connected.
+                handle = new Microsoft.Win32.SafeHandles.SafePipeHandle(
+                    WindowsNamedPipes.CreatePipe(
+                        _pipeName,
+                        WindowsNamedPipes.SystemAdminsInteractiveSddl),
+                    ownsHandle: true);
+
+                stream = new NamedPipeServerStream(
+                    PipeDirection.InOut,
+                    isAsync: true,
+                    isConnected: false,
+                    handle);
             }
             catch (OperationCanceledException)
             {
@@ -78,33 +106,20 @@ public sealed class ControlTimePipeServer
             }
 
             _ = Task.Run(
-                () => HandleConnectionAsync(stream, cancellationToken),
+                () => HandleConnectionAsync(stream, handle, cancellationToken),
                 CancellationToken.None);
         }
     }
 
-    private NamedPipeServerStream CreateStream()
-    {
-        // The stream takes ownership of the handle; do not dispose it here.
-        var handle = new Microsoft.Win32.SafeHandles.SafePipeHandle(
-            WindowsNamedPipes.CreatePipe(
-                _pipeName,
-                WindowsNamedPipes.SystemAdminsInteractiveSddl),
-            ownsHandle: true);
-
-        return new NamedPipeServerStream(
-            PipeDirection.InOut,
-            isAsync: true,
-            isConnected: false,
-            handle);
-    }
-
     private async Task HandleConnectionAsync(
         NamedPipeServerStream stream,
+        Microsoft.Win32.SafeHandles.SafePipeHandle handle,
         CancellationToken cancellationToken)
     {
         try
         {
+            int? clientSessionId = TryResolveClientSession(handle);
+
             await using (stream)
             using (var reader = new StreamReader(stream))
             using (var writer = new StreamWriter(stream) { AutoFlush = true })
@@ -113,7 +128,7 @@ public sealed class ControlTimePipeServer
 
                 while ((line = await reader.ReadLineAsync(cancellationToken)) is not null)
                 {
-                    IpcResponse response = await ProcessAsync(line, cancellationToken);
+                    IpcResponse response = await ProcessAsync(line, clientSessionId, cancellationToken);
                     await writer.WriteLineAsync(JsonSerializer.Serialize(response, JsonOptions));
                 }
             }
@@ -130,7 +145,30 @@ public sealed class ControlTimePipeServer
         }
     }
 
-    private async Task<IpcResponse> ProcessAsync(string line, CancellationToken cancellationToken)
+    private int? TryResolveClientSession(Microsoft.Win32.SafeHandles.SafePipeHandle handle)
+    {
+        try
+        {
+            if (!WindowsNamedPipes.TryGetClientProcessId(handle, out int clientProcessId))
+            {
+                return null;
+            }
+
+            return _clientSessionResolver(clientProcessId);
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(
+                ex,
+                "No se pudo determinar la sesión de Windows del cliente IPC de ControlTime.");
+            return null;
+        }
+    }
+
+    private async Task<IpcResponse> ProcessAsync(
+        string line,
+        int? clientSessionId,
+        CancellationToken cancellationToken)
     {
         IpcRequest? request;
 
@@ -150,7 +188,7 @@ public sealed class ControlTimePipeServer
 
         try
         {
-            return await DispatchAsync(request, cancellationToken);
+            return await DispatchAsync(request, clientSessionId, cancellationToken);
         }
         catch (Exception ex)
         {
@@ -159,7 +197,10 @@ public sealed class ControlTimePipeServer
         }
     }
 
-    private async Task<IpcResponse> DispatchAsync(IpcRequest request, CancellationToken cancellationToken)
+    private async Task<IpcResponse> DispatchAsync(
+        IpcRequest request,
+        int? clientSessionId,
+        CancellationToken cancellationToken)
     {
         switch (request.Kind)
         {
@@ -178,7 +219,14 @@ public sealed class ControlTimePipeServer
                     return new IpcResponse(false);
                 }
 
-                _sink.Report(new ActivityStatus(report.State, report.LastInputAt, report.Timestamp));
+                if (clientSessionId is not int sessionId)
+                {
+                    _logger?.LogWarning(
+                        "Informe de actividad rechazado: no se pudo atribuir a una sesión de Windows.");
+                    return new IpcResponse(false);
+                }
+
+                _sink.Report(sessionId, new ActivityStatus(report.State, report.LastInputAt, report.Timestamp));
                 return new IpcResponse(true);
             }
 

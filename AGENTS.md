@@ -156,17 +156,24 @@ Created:
 * `ControlTime.App` `ServiceClientHost` replaces `MonitoringHost` (1 s poll: report local activity + fetch status); Dashboard banner and tray tooltip on unavailable Service; Settings enforcement label reads from the Service; SQLite busy timeout 5 s (App and Service are separate writers)
 * Infrastructure and Tests target `net10.0-windows` (pipe security layer is Windows-only)
 
+* `docs/phases/phase-18.md`
+* `ControlTime.Infrastructure` session-attributed activity reports: `ActivityReportSink` is a thread-safe per-session cache (`Report(sessionId, ...)` / `TryGetFreshForSession`); `ControlTimePipeServer` derives the client's Windows session server-side (`GetNamedPipeClientProcessId` P/Invoke in `WindowsNamedPipes` → `Process.SessionId`, injectable resolver) and rejects `ReportActivity` from unresolvable connections
+* `ControlTime.Infrastructure` `Windows/WindowsConsoleSessionId` (`WTSGetActiveConsoleSessionId` wrapper); `CompositeActivityMonitor` now consumes only fresh reports of the active console session (other sessions' reports ignored; no console session → WTS fallback) and exposes `IsUsingReportedActivity` (used by `ServiceStatusProvider`)
+* `ControlTime.App` single instance per Windows session (named mutex `Local\ControlTime.App`; second instance exits immediately); the App is formally the user-session agent (no separate agent process introduced)
+
 Phase 17 was split into `Phase 17a — Windows Service Foundation` and `Phase 17b — Service IPC and App Client`.
 
 Phase 17a — Windows Service Foundation is complete.
 
 Phase 17b — Service IPC and App Client is complete.
 
+Phase 18 — User Session Integration is complete.
+
 Current phase:
 
-`Phase 18 — User Session Integration` (not started)
+`Phase 19 — Usage History UI` (not started)
 
-Do not implement functionality belonging to Phase 18 or later without planning Phase 18 first.
+Do not implement functionality belonging to Phase 19 or later without planning Phase 19 first.
 
 ---
 

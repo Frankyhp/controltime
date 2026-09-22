@@ -45,6 +45,23 @@ internal static class WindowsNamedPipes
         int defaultTimeOut,
         ref SecurityAttributes securityAttributes);
 
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern bool GetNamedPipeClientProcessId(IntPtr pipe, out uint clientProcessId);
+
+    public static bool TryGetClientProcessId(SafeHandle handle, out int processId)
+    {
+        processId = 0;
+
+        if (handle.IsInvalid ||
+            !GetNamedPipeClientProcessId(handle.DangerousGetHandle(), out uint clientProcessId))
+        {
+            return false;
+        }
+
+        processId = (int)clientProcessId;
+        return true;
+    }
+
     public static IntPtr CreatePipe(string pipeName, string sddl)
     {
         if (!ConvertStringSecurityDescriptorToSecurityDescriptorW(

@@ -5,31 +5,36 @@ namespace ControlTime.Infrastructure.Ipc;
 public sealed class ActivityReportSink(TimeProvider? timeProvider = null)
 {
     private readonly TimeProvider _timeProvider = timeProvider ?? TimeProvider.System;
+    private readonly object _gate = new();
+    private readonly Dictionary<int, (ActivityStatus Status, DateTimeOffset ReceivedAt)> _reports = [];
 
-    private ActivityStatus? _lastReport;
-    private DateTimeOffset _receivedAt;
-
-    public void Report(ActivityStatus status)
+    public void Report(int sessionId, ActivityStatus status)
     {
         ArgumentNullException.ThrowIfNull(status);
 
-        _lastReport = status;
-        _receivedAt = _timeProvider.GetUtcNow();
-    }
-
-    public ActivityStatus? TryGetFresh(TimeSpan maxAge)
-    {
-        ActivityStatus? report = _lastReport;
-
-        if (report is null)
+        lock (_gate)
         {
-            return null;
+            _reports[sessionId] = (status, _timeProvider.GetUtcNow());
         }
-
-        return _timeProvider.GetUtcNow() - _receivedAt <= maxAge
-            ? report
-            : null;
     }
 
-    public bool HasFreshReport(TimeSpan maxAge) => TryGetFresh(maxAge) is not null;
+    public ActivityStatus? TryGetFreshForSession(int sessionId, TimeSpan maxAge)
+    {
+        DateTimeOffset now = _timeProvider.GetUtcNow();
+
+        lock (_gate)
+        {
+            if (!_reports.TryGetValue(sessionId, out (ActivityStatus Status, DateTimeOffset ReceivedAt) report))
+            {
+                return null;
+            }
+
+            return now - report.ReceivedAt <= maxAge
+                ? report.Status
+                : null;
+        }
+    }
+
+    public bool HasFreshReportForSession(int sessionId, TimeSpan maxAge) =>
+        TryGetFreshForSession(sessionId, maxAge) is not null;
 }

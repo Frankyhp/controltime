@@ -35,10 +35,13 @@ builder.Services.AddSingleton<IAdminAuthService>(
 
 builder.Services.AddSingleton<ActivityReportSink>();
 
-builder.Services.AddSingleton<IActivityMonitor>(provider => new CompositeActivityMonitor(
+builder.Services.AddSingleton<CompositeActivityMonitor>(provider => new CompositeActivityMonitor(
     new WtsConsoleSessionMonitor(
         provider.GetService<ILogger<WtsConsoleSessionMonitor>>()),
     provider.GetRequiredService<ActivityReportSink>()));
+
+builder.Services.AddSingleton<IActivityMonitor>(
+    provider => provider.GetRequiredService<CompositeActivityMonitor>());
 
 builder.Services.AddSingleton<RuleEngine>(_ => new RuleEngine());
 builder.Services.AddTransient<UsageService>();
@@ -70,7 +73,7 @@ builder.Services.AddHostedService(
 builder.Services.AddSingleton(provider => new ServiceStatusProvider(
     provider.GetRequiredService<MonitoringLoop>(),
     provider.GetRequiredService<IAdminAuthService>(),
-    provider.GetRequiredService<ActivityReportSink>(),
+    provider.GetRequiredService<CompositeActivityMonitor>(),
     MonitoringLoop.IsEnforcementEnabled()));
 
 builder.Services.AddSingleton(provider => new ControlTimePipeServer(

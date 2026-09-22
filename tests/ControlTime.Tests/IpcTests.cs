@@ -129,7 +129,7 @@ public sealed class IpcTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task ReportActivity_LandsInSink()
+    public async Task ReportActivity_LandsInSinkAttributedToClientSession()
     {
         var report = new ActivityStatus(
             ActivityState.Idle,
@@ -138,8 +138,14 @@ public sealed class IpcTests : IAsyncLifetime
 
         await CreateClient().ReportActivityAsync(report, _cancellation.Token);
 
-        Assert.NotNull(_sink.TryGetFresh(TimeSpan.FromSeconds(10)));
-        Assert.Equal(ActivityState.Idle, _sink.TryGetFresh(TimeSpan.FromSeconds(10))!.State);
+        int clientSessionId = System.Diagnostics.Process.GetCurrentProcess().SessionId;
+
+        ActivityStatus? fresh = _sink.TryGetFreshForSession(clientSessionId, TimeSpan.FromSeconds(10));
+
+        Assert.NotNull(fresh);
+        Assert.Equal(ActivityState.Idle, fresh!.State);
+
+        Assert.Null(_sink.TryGetFreshForSession(clientSessionId + 4242, TimeSpan.FromSeconds(10)));
     }
 
     [Fact]

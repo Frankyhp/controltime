@@ -1,4 +1,5 @@
-﻿using System.Windows;
+﻿using System.Threading;
+using System.Windows;
 using ControlTime.App.Services;
 using ControlTime.App.ViewModels;
 using ControlTime.App.Views;
@@ -19,14 +20,31 @@ namespace ControlTime.App;
 /// </summary>
 public partial class App : Application
 {
+    private const string InstanceMutexName = @"Local\ControlTime.App";
+
     private ServiceProvider? _services;
     private ServiceClientHost? _serviceClientHost;
     private Action<MonitorState>? _trayStateChangedHandler;
     private Action<bool>? _trayAvailabilityHandler;
+    private Mutex? _instanceMutex;
 
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+
+        // La App es el agente de sesión de usuario (Fase 18): una sola
+        // instancia por sesión de Windows evita reportes de actividad y
+        // iconos de bandeja duplicados.
+        _instanceMutex = new Mutex(
+            initiallyOwned: true,
+            name: InstanceMutexName,
+            createdNew: out bool isFirstInstance);
+
+        if (!isFirstInstance)
+        {
+            Shutdown();
+            return;
+        }
 
         var services = _services = CreateServices();
 

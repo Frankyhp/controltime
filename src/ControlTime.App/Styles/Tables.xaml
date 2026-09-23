@@ -36,8 +36,19 @@
                                               Content="{TemplateBinding Content}"
                                               VerticalAlignment="Center"
                                               Margin="10,0,8,0" />
+                        <ContentPresenter x:Name="Plain"
+                                          Content="{TemplateBinding Content}"
+                                          ContentTemplate="{TemplateBinding ContentTemplate}"
+                                          ContentStringFormat="{TemplateBinding ContentStringFormat}"
+                                          Visibility="Collapsed"
+                                          VerticalAlignment="Center"
+                                          Margin="10,0,8,0" />
                     </Grid>
                     <ControlTemplate.Triggers>
+                        <DataTrigger Binding="{Binding View, RelativeSource={RelativeSource AncestorType=ListView}}" Value="{x:Null}">
+                            <Setter TargetName="Cells" Property="Visibility" Value="Collapsed" />
+                            <Setter TargetName="Plain" Property="Visibility" Value="Visible" />
+                        </DataTrigger>
                         <Trigger Property="ItemsControl.AlternationIndex" Value="1">
                             <Setter TargetName="Bg" Property="Background" Value="{StaticResource SurfaceSubtleBrush}" />
                         </Trigger>

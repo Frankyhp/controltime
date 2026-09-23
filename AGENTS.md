@@ -174,6 +174,11 @@ Created:
 * `ControlTime.App` crash tolerance: `DispatcherUnhandledException` + `TaskScheduler.UnobservedTaskException` handlers (log `Critical`, keep the presentation-only App alive); startup/shutdown/tray-exit audit logs; `ServiceClientHost` logs Service availability transitions
 * `ControlTime.Service` fail-safe startup: `MonitoringLoop` prepares the database with 6 attempts / 5 s delay and on final failure logs `Critical` and stays idle (no usage writes, no enforcement, App shows Service unavailable) instead of dying silently; `StopAsync` closes the open usage session at the last known `LastInputAt` (orphan adoption remains the backstop)
 
+* `docs/phases/redesign-phase-01.md`
+* `ControlTime.App` `Styles/`: plain-WPF visual design system (`Colors`, `Typography`, `Buttons`, `Inputs`, `Cards`, `Navigation`, `Tables`, `Banners` resource dictionaries) merged in `App.xaml` with implicit styles for `Window`, `TextBlock`, `TextBox`, `PasswordBox`, `Button`, `CheckBox`, `ListViewItem` and `GridViewColumnHeader`; status banners are `Border` styles with explicit icon/text content (no custom controls)
+* `ControlTime.App` shell: `MainWindow` now a 216 px left nav rail (glyph `RadioButton`s, same bindings/commands) + white rounded content surface
+* `ControlTime.App` Dashboard / Rules / History / Settings / `AdminExitWindow` restyled to cards, banners, chips and flat tables; all bindings, names, handlers and behaviour unchanged (presentation-only)
+
 Phase 17 was split into `Phase 17a — Windows Service Foundation` and `Phase 17b — Service IPC and App Client`.
 
 Phase 17a — Windows Service Foundation is complete.
@@ -185,6 +190,8 @@ Phase 18 — User Session Integration is complete.
 Phase 19 — Usage History UI is complete.
 
 Phase 20 — Reliability and Recovery is complete.
+
+Redesign Phase 01 — Visual Design System is complete (presentation-only, inserted after Phase 19, no renumbering).
 
 Current phase:
 

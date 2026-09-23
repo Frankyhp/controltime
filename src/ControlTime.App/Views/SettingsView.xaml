@@ -9,89 +9,162 @@
              Unloaded="OnUnloaded">
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
+
+        <Style x:Key="ErrorMessageBanner" TargetType="Border" BasedOn="{StaticResource DangerBanner}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding ErrorMessage}" Value="">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding ErrorMessage}" Value="{x:Null}">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="StatusMessageBanner" TargetType="Border" BasedOn="{StaticResource SuccessBanner}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding StatusMessage}" Value="">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding StatusMessage}" Value="{x:Null}">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
     </UserControl.Resources>
-    <StackPanel Margin="12">
-        <Border Margin="0,0,0,8"
-                Padding="10"
-                Background="#FFF6E3B8"
-                Visibility="{Binding ShowSetupPanel, Converter={StaticResource BoolToVis}}">
-            <StackPanel>
-                <TextBlock TextWrapping="Wrap"
-                           Text="Primera vez en ControlTime: establece la contraseña de administrador (mínimo 8 caracteres). Será necesaria para modificar la configuración." />
-                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                    <PasswordBox x:Name="SetupPasswordBox" Width="220" Margin="0,0,8,0" />
-                    <PasswordBox x:Name="SetupConfirmPasswordBox" Width="220" Margin="0,0,8,0" />
-                    <Button Content="Establecer contraseña" Padding="10,4" Click="OnSetupPasswordClick" />
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="16">
+            <Border Style="{StaticResource CalloutCard}"
+                    Margin="0,0,0,8"
+                    Visibility="{Binding ShowSetupPanel, Converter={StaticResource BoolToVis}}">
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock FontFamily="{StaticResource IconFont}"
+                                   Text="&#xE7BA;"
+                                   FontSize="16"
+                                   Foreground="{StaticResource WarningBrush}"
+                                   VerticalAlignment="Center"
+                                   Margin="0,0,10,0" />
+                        <TextBlock TextWrapping="Wrap"
+                                   MaxWidth="720"
+                                   VerticalAlignment="Center"
+                                   Text="Primera vez en ControlTime: establece la contraseña de administrador (mínimo 8 caracteres). Será necesaria para modificar la configuración." />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="26,10,0,0">
+                        <PasswordBox x:Name="SetupPasswordBox" Width="220" Margin="0,0,8,0" />
+                        <PasswordBox x:Name="SetupConfirmPasswordBox" Width="220" Margin="0,0,8,0" />
+                        <Button Content="Establecer contraseña"
+                                Style="{StaticResource PrimaryButton}"
+                                Click="OnSetupPasswordClick" />
+                    </StackPanel>
                 </StackPanel>
-            </StackPanel>
-        </Border>
+            </Border>
 
-        <Border Margin="0,0,0,8"
-                Padding="10"
-                Background="#FFE8EEF6"
-                Visibility="{Binding ShowUnlockPanel, Converter={StaticResource BoolToVis}}">
-            <StackPanel Orientation="Horizontal">
-                <TextBlock VerticalAlignment="Center" Margin="0,0,10,0"
-                           Text="Zona protegida. Introduce la contraseña de administrador para modificar la configuración." />
-                <PasswordBox x:Name="UnlockPasswordBox" Width="220" Margin="0,0,8,0" />
-                <Button Content="Entrar" Padding="10,4" Click="OnUnlockClick" />
-            </StackPanel>
-        </Border>
+            <Border Margin="0,0,0,8"
+                    Style="{StaticResource InfoBanner}"
+                    Visibility="{Binding ShowUnlockPanel, Converter={StaticResource BoolToVis}}">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock FontFamily="{StaticResource IconFont}"
+                               Text="&#xE7BA;"
+                               FontSize="16"
+                               Foreground="{StaticResource AccentBrush}"
+                               VerticalAlignment="Center"
+                               Margin="0,0,10,0" />
+                    <TextBlock VerticalAlignment="Center" Margin="0,0,10,0"
+                               Text="Zona protegida. Introduce la contraseña de administrador para modificar la configuración." />
+                    <PasswordBox x:Name="UnlockPasswordBox" Width="220" Margin="0,0,8,0" />
+                    <Button Content="Entrar" Click="OnUnlockClick" />
+                </StackPanel>
+            </Border>
 
-        <Border Margin="0,0,0,8"
-                Padding="10"
-                Background="#FFDDEEDD"
-                Visibility="{Binding ShowAdminBar, Converter={StaticResource BoolToVis}}">
-            <StackPanel Orientation="Horizontal">
-                <TextBlock VerticalAlignment="Center" Margin="0,0,10,0"
-                           Text="Modo administrador activado (expira automáticamente en unos minutos)." />
-                <Button Content="Bloquear ahora" Padding="10,4" Command="{Binding LockAdminCommand}" />
-            </StackPanel>
-        </Border>
+            <Border Margin="0,0,0,8"
+                    Style="{StaticResource SuccessBanner}"
+                    Visibility="{Binding ShowAdminBar, Converter={StaticResource BoolToVis}}">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock FontFamily="{StaticResource IconFont}"
+                               Text="&#xE73E;"
+                               FontSize="16"
+                               Foreground="{StaticResource SuccessBrush}"
+                               VerticalAlignment="Center"
+                               Margin="0,0,10,0" />
+                    <TextBlock VerticalAlignment="Center" Margin="0,0,10,0"
+                               Text="Modo administrador activado (expira automáticamente en unos minutos)." />
+                    <Button Content="Bloquear ahora" Command="{Binding LockAdminCommand}" />
+                </StackPanel>
+            </Border>
 
-        <GroupBox Header="Contraseña de administrador" Margin="0,0,0,8" IsEnabled="{Binding CanEdit}">
-            <StackPanel Margin="4">
-                <TextBlock Text="Contraseña actual" />
-                <PasswordBox x:Name="CurrentPasswordBox" Width="260" HorizontalAlignment="Left"
-                             Margin="0,2,0,10" />
-                <TextBlock Text="Contraseña nueva (mínimo 8 caracteres)" />
-                <PasswordBox x:Name="NewPasswordBox" Width="260" HorizontalAlignment="Left"
-                             Margin="0,2,0,10" />
-                <TextBlock Text="Repite la contraseña nueva" />
-                <PasswordBox x:Name="ConfirmPasswordBox" Width="260" HorizontalAlignment="Left"
-                             Margin="0,2,0,10" />
-                <Button Content="Cambiar contraseña" Padding="12,4" HorizontalAlignment="Left"
-                        Click="OnChangePasswordClick" />
-            </StackPanel>
-        </GroupBox>
+            <Border Style="{StaticResource Card}" IsEnabled="{Binding CanEdit}">
+                <StackPanel>
+                    <TextBlock Style="{StaticResource SectionHeader}" Text="Contraseña de administrador" />
+                    <TextBlock Style="{StaticResource FieldLabel}" Text="Contraseña actual" />
+                    <PasswordBox x:Name="CurrentPasswordBox" Width="260" HorizontalAlignment="Left"
+                                 Margin="0,0,0,10" />
+                    <TextBlock Style="{StaticResource FieldLabel}" Text="Contraseña nueva (mínimo 8 caracteres)" />
+                    <PasswordBox x:Name="NewPasswordBox" Width="260" HorizontalAlignment="Left"
+                                 Margin="0,0,0,10" />
+                    <TextBlock Style="{StaticResource FieldLabel}" Text="Repite la contraseña nueva" />
+                    <PasswordBox x:Name="ConfirmPasswordBox" Width="260" HorizontalAlignment="Left"
+                                 Margin="0,0,0,10" />
+                    <Button Content="Cambiar contraseña"
+                            Style="{StaticResource PrimaryButton}"
+                            HorizontalAlignment="Left"
+                            Click="OnChangePasswordClick" />
+                </StackPanel>
+            </Border>
 
-        <GroupBox Header="Arranque" Margin="0,0,0,8">
-            <StackPanel Margin="4">
-                <CheckBox Content="Iniciar ControlTime con Windows"
-                          IsChecked="{Binding AutoStartEnabled, Mode=OneWay}"
-                          Command="{Binding ToggleAutoStartCommand}"
-                          IsEnabled="{Binding CanEdit}" />
-                <TextBlock Margin="0,6,0,0"
-                           TextWrapping="Wrap"
-                           FontStyle="Italic"
-                           Foreground="Gray"
-                           Text="Requiere modo administrador. Se guarda en HKCU\Software\Microsoft\Windows\CurrentVersion\Run." />
-            </StackPanel>
-        </GroupBox>
+            <Border Style="{StaticResource Card}">
+                <StackPanel>
+                    <TextBlock Style="{StaticResource SectionHeader}" Text="Arranque" />
+                    <CheckBox Content="Iniciar ControlTime con Windows"
+                              IsChecked="{Binding AutoStartEnabled, Mode=OneWay}"
+                              Command="{Binding ToggleAutoStartCommand}"
+                              IsEnabled="{Binding CanEdit}" />
+                    <TextBlock Style="{StaticResource HintText}"
+                               Margin="0,6,0,0"
+                               Text="Requiere modo administrador. Se guarda en HKCU\Software\Microsoft\Windows\CurrentVersion\Run." />
+                </StackPanel>
+            </Border>
 
-        <GroupBox Header="Bloqueo de seguridad" Margin="0,0,0,8">
-            <TextBlock Margin="4"
-                       TextWrapping="Wrap"
-                       Text="{Binding EnforcementStatusText}" />
-        </GroupBox>
+            <Border Style="{StaticResource Card}">
+                <StackPanel>
+                    <TextBlock Style="{StaticResource SectionHeader}" Text="Bloqueo de seguridad" />
+                    <Border Background="{StaticResource SurfaceSubtleBrush}"
+                            BorderBrush="{StaticResource BorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="6"
+                            Padding="12,8">
+                        <TextBlock TextWrapping="Wrap"
+                                   Text="{Binding EnforcementStatusText}" />
+                    </Border>
+                </StackPanel>
+            </Border>
 
-        <StackPanel Margin="0,8,0,0">
-            <TextBlock TextWrapping="Wrap"
-                       Foreground="#FFB00000"
-                       Text="{Binding ErrorMessage}" />
-            <TextBlock TextWrapping="Wrap"
-                       Foreground="#FF1B7A1B"
-                       Text="{Binding StatusMessage}" />
+            <Border Style="{StaticResource ErrorMessageBanner}" Margin="0,4,0,0">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock FontFamily="{StaticResource IconFont}"
+                               Text="&#xEA39;"
+                               FontSize="16"
+                               Foreground="{StaticResource DangerBrush}"
+                               VerticalAlignment="Center"
+                               Margin="0,0,10,0" />
+                    <TextBlock Text="{Binding ErrorMessage}"
+                               TextWrapping="Wrap"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+            </Border>
+            <Border Style="{StaticResource StatusMessageBanner}" Margin="0,4,0,0">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock FontFamily="{StaticResource IconFont}"
+                               Text="&#xE73E;"
+                               FontSize="16"
+                               Foreground="{StaticResource SuccessBrush}"
+                               VerticalAlignment="Center"
+                               Margin="0,0,10,0" />
+                    <TextBlock Text="{Binding StatusMessage}"
+                               TextWrapping="Wrap"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+            </Border>
         </StackPanel>
-    </StackPanel>
+    </ScrollViewer>
 </UserControl>

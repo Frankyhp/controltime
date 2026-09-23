@@ -9,98 +9,98 @@
              Unloaded="OnUnloaded">
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
-        <Style x:Key="Card" TargetType="Border">
-            <Setter Property="Margin" Value="0,0,10,10" />
-            <Setter Property="Padding" Value="12" />
-            <Setter Property="MinWidth" Value="170" />
-            <Setter Property="BorderBrush" Value="#FFB9C4D4" />
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="Background" Value="#FFF7FAFD" />
-        </Style>
-        <Style x:Key="CardLabel" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="#FF5A6B80" />
-            <Setter Property="FontSize" Value="12" />
-        </Style>
-        <Style x:Key="CardValue" TargetType="TextBlock">
-            <Setter Property="FontSize" Value="22" />
-            <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="Margin" Value="0,4,0,0" />
-        </Style>
     </UserControl.Resources>
     <ScrollViewer VerticalScrollBarVisibility="Auto">
         <StackPanel Margin="16">
-            <Border Padding="16"
+            <Border Style="{StaticResource DangerBanner}"
                     Margin="0,0,0,12"
-                    BorderBrush="#FFB9C4D4"
-                    BorderThickness="1"
-                    Background="#FFFFFFFF">
-                <StackPanel>
-                    <TextBlock Text="Estado de acceso actual" Foreground="#FF5A6B80" FontSize="12" />
-                    <TextBlock Text="{Binding StateText}"
-                               FontSize="34"
-                               FontWeight="Bold"
-                               Foreground="{Binding StateBrush}" />
-                    <TextBlock Text="{Binding ReasonText}"
-                               TextWrapping="Wrap"
-                               Margin="0,6,0,0" />
-                    <TextBlock Text="{Binding NextAllowedText}"
-                               TextWrapping="Wrap"
-                               Margin="0,4,0,0" />
+                    Visibility="{Binding HasError, Converter={StaticResource BoolToVis}}">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock FontFamily="{StaticResource IconFont}"
+                               Text="&#xEA39;"
+                               FontSize="16"
+                               Foreground="{StaticResource DangerBrush}"
+                               VerticalAlignment="Center"
+                               Margin="0,0,10,0" />
                     <TextBlock Text="{Binding ErrorMessage}"
                                TextWrapping="Wrap"
-                               Margin="0,4,0,0"
-                               Foreground="#FFB71C1C"
-                               Visibility="{Binding HasError, Converter={StaticResource BoolToVis}}" />
+                               VerticalAlignment="Center" />
                 </StackPanel>
             </Border>
 
-            <Border Style="{StaticResource Card}" HorizontalAlignment="Left">
-                <StackPanel>
-                    <TextBlock Style="{StaticResource CardLabel}" Text="Uso registrado hoy" />
-                    <TextBlock Style="{StaticResource CardValue}" Text="{Binding UsageText}" />
-                </StackPanel>
-            </Border>
+            <UniformGrid Columns="2" Style="{StaticResource CardGrid}">
+                <Border Style="{StaticResource Card}">
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource CardLabel}" Text="Estado de acceso actual" />
+                        <TextBlock Text="{Binding StateText}"
+                                   FontSize="30"
+                                   FontWeight="Bold"
+                                   Foreground="{Binding StateBrush}"
+                                   Margin="0,4,0,0" />
+                        <TextBlock Text="{Binding ReasonText}"
+                                   TextWrapping="Wrap"
+                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   Margin="0,6,0,0" />
+                        <TextBlock Text="{Binding NextAllowedText}"
+                                   TextWrapping="Wrap"
+                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   Margin="0,4,0,0" />
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource Card}">
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource CardLabel}" Text="Tiempo restante" />
+                        <TextBlock Style="{StaticResource HeroMetricText}"
+                                   Text="{Binding RemainingText}" />
+                    </StackPanel>
+                </Border>
+            </UniformGrid>
 
-            <WrapPanel>
+            <UniformGrid Columns="4" Style="{StaticResource CardGrid}">
+                <Border Style="{StaticResource Card}">
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource CardLabel}" Text="Uso registrado hoy" />
+                        <TextBlock Style="{StaticResource MetricText}" Text="{Binding UsageText}" />
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource Card}">
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource CardLabel}" Text="Límite diario configurado" />
+                        <TextBlock Style="{StaticResource MetricText}" Text="{Binding LimitText}" />
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource Card}">
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource CardLabel}" Text="Bonus de hoy" />
+                        <TextBlock Style="{StaticResource MetricText}" Text="{Binding BonusText}" />
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource Card}">
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource CardLabel}" Text="Asignación efectiva" />
+                        <TextBlock Style="{StaticResource MetricText}" Text="{Binding AllowanceText}" />
+                    </StackPanel>
+                </Border>
+            </UniformGrid>
+
+            <UniformGrid Columns="2" Style="{StaticResource CardGrid}">
                 <Border Style="{StaticResource Card}">
                     <StackPanel>
                         <TextBlock Style="{StaticResource CardLabel}" Text="Actividad" />
-                        <TextBlock Style="{StaticResource CardValue}"
+                        <TextBlock Style="{StaticResource MetricText}"
                                    Text="{Binding ActivityText}"
                                    Foreground="{Binding ActivityBrush}" />
                     </StackPanel>
                 </Border>
                 <Border Style="{StaticResource Card}">
                     <StackPanel>
-                        <TextBlock Style="{StaticResource CardLabel}" Text="Límite diario configurado" />
-                        <TextBlock Style="{StaticResource CardValue}" Text="{Binding LimitText}" />
-                    </StackPanel>
-                </Border>
-                <Border Style="{StaticResource Card}">
-                    <StackPanel>
-                        <TextBlock Style="{StaticResource CardLabel}" Text="Bonus de hoy" />
-                        <TextBlock Style="{StaticResource CardValue}" Text="{Binding BonusText}" />
-                    </StackPanel>
-                </Border>
-                <Border Style="{StaticResource Card}">
-                    <StackPanel>
-                        <TextBlock Style="{StaticResource CardLabel}" Text="Asignación efectiva" />
-                        <TextBlock Style="{StaticResource CardValue}" Text="{Binding AllowanceText}" />
-                    </StackPanel>
-                </Border>
-                <Border Style="{StaticResource Card}">
-                    <StackPanel>
-                        <TextBlock Style="{StaticResource CardLabel}" Text="Tiempo restante" />
-                        <TextBlock Style="{StaticResource CardValue}" Text="{Binding RemainingText}" />
-                    </StackPanel>
-                </Border>
-                <Border Style="{StaticResource Card}">
-                    <StackPanel>
                         <TextBlock Style="{StaticResource CardLabel}" Text="Horario activo" />
-                        <TextBlock Style="{StaticResource CardValue}" Text="{Binding ScheduleText}" />
+                        <TextBlock Style="{StaticResource MetricText}"
+                                   Text="{Binding ScheduleText}"
+                                   TextWrapping="Wrap" />
                     </StackPanel>
                 </Border>
-            </WrapPanel>
+            </UniformGrid>
         </StackPanel>
     </ScrollViewer>
 </UserControl>

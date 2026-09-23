@@ -985,6 +985,20 @@ No advanced analytics are required.
 
 ---
 
+# Redesign Phase 01 — Visual Design System
+
+Presentation-only redesign inserted after Phase 19. Does not renumber any phase and
+does not change behaviour, domain logic, persistence, services or Windows integration.
+
+## Goal
+
+Make the WPF UI look like a modern Windows desktop utility using plain WPF resource
+dictionaries and control templates only (no third-party UI libraries).
+
+See `docs/phases/redesign-phase-01.md`.
+
+---
+
 # Phase 20 — Reliability and Recovery
 
 ## Goal
@@ -1143,6 +1157,7 @@ Phase 17a — Windows Service Foundation
 Phase 17b — Service IPC and App Client
 Phase 18 — User Session Integration
 Phase 19 — Usage History UI
+Redesign Phase 01 — Visual Design System (presentation-only, inserted after Phase 19)
 Phase 20 — Reliability
 ```
 

@@ -9,6 +9,28 @@
              Unloaded="OnUnloaded">
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
+
+        <Style x:Key="ErrorMessageBanner" TargetType="Border" BasedOn="{StaticResource DangerBanner}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding ErrorMessage}" Value="">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding ErrorMessage}" Value="{x:Null}">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="StatusMessageBanner" TargetType="Border" BasedOn="{StaticResource SuccessBanner}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding StatusMessage}" Value="">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding StatusMessage}" Value="{x:Null}">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
     </UserControl.Resources>
     <Grid Margin="12">
         <Grid.RowDefinitions>
@@ -22,64 +44,89 @@
 
         <Border Grid.Row="0"
                 Margin="0,0,0,8"
-                Padding="10"
-                Background="#FFF6E3B8"
+                Style="{StaticResource WarningBanner}"
                 Visibility="{Binding ShowSetupPanel, Converter={StaticResource BoolToVis}}">
             <StackPanel>
-                <TextBlock TextWrapping="Wrap"
-                           Text="Primera vez en ControlTime: establece la contraseña de administrador (mínimo 8 caracteres). Será necesaria para modificar las reglas." />
-                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock FontFamily="{StaticResource IconFont}"
+                               Text="&#xE7BA;"
+                               FontSize="16"
+                               Foreground="{StaticResource WarningBrush}"
+                               VerticalAlignment="Center"
+                               Margin="0,0,10,0" />
+                    <TextBlock TextWrapping="Wrap"
+                               MaxWidth="720"
+                               VerticalAlignment="Center"
+                               Text="Primera vez en ControlTime: establece la contraseña de administrador (mínimo 8 caracteres). Será necesaria para modificar las reglas." />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="26,8,0,0">
                     <PasswordBox x:Name="SetupPasswordBox" Width="220" Margin="0,0,8,0" />
                     <PasswordBox x:Name="SetupConfirmPasswordBox" Width="220" Margin="0,0,8,0" />
-                    <Button Content="Establecer contraseña" Padding="10,4" Click="OnSetupPasswordClick" />
+                    <Button Content="Establecer contraseña"
+                            Style="{StaticResource PrimaryButton}"
+                            Click="OnSetupPasswordClick" />
                 </StackPanel>
             </StackPanel>
         </Border>
 
         <Border Grid.Row="1"
                 Margin="0,0,0,8"
-                Padding="10"
-                Background="#FFE8EEF6"
+                Style="{StaticResource InfoBanner}"
                 Visibility="{Binding ShowUnlockPanel, Converter={StaticResource BoolToVis}}">
             <StackPanel Orientation="Horizontal">
+                <TextBlock FontFamily="{StaticResource IconFont}"
+                           Text="&#xE7BA;"
+                           FontSize="16"
+                           Foreground="{StaticResource AccentBrush}"
+                           VerticalAlignment="Center"
+                           Margin="0,0,10,0" />
                 <TextBlock VerticalAlignment="Center" Margin="0,0,10,0"
                            Text="Zona protegida. Introduce la contraseña de administrador para modificar las reglas." />
                 <PasswordBox x:Name="UnlockPasswordBox" Width="220" Margin="0,0,8,0" />
-                <Button Content="Entrar" Padding="10,4" Click="OnUnlockClick" />
+                <Button Content="Entrar" Click="OnUnlockClick" />
             </StackPanel>
         </Border>
 
         <Border Grid.Row="2"
                 Margin="0,0,0,8"
-                Padding="10"
-                Background="#FFDDEEDD"
+                Style="{StaticResource SuccessBanner}"
                 Visibility="{Binding ShowAdminBar, Converter={StaticResource BoolToVis}}">
             <StackPanel Orientation="Horizontal">
+                <TextBlock FontFamily="{StaticResource IconFont}"
+                           Text="&#xE73E;"
+                           FontSize="16"
+                           Foreground="{StaticResource SuccessBrush}"
+                           VerticalAlignment="Center"
+                           Margin="0,0,10,0" />
                 <TextBlock VerticalAlignment="Center" Margin="0,0,10,0"
                            Text="Modo administrador activado (expira automáticamente en unos minutos)." />
-                <Button Content="Bloquear ahora" Padding="10,4" Command="{Binding LockAdminCommand}" />
+                <Button Content="Bloquear ahora" Command="{Binding LockAdminCommand}" />
             </StackPanel>
         </Border>
 
         <Border Grid.Row="3"
                 Margin="0,0,0,8"
-                Padding="10"
-                Background="#FFF3E8F8">
-            <StackPanel Orientation="Horizontal">
-                <TextBlock VerticalAlignment="Center" Margin="0,0,10,0"
-                           Text="Tiempo extra para hoy:" />
-                <Button Content="Regalar tiempo" Padding="10,4"
-                        Command="{Binding OpenGrantCommand}"
-                        Visibility="{Binding ShowGrantButton, Converter={StaticResource BoolToVis}}" />
-                <StackPanel Orientation="Horizontal"
-                            Visibility="{Binding ShowGrantInputs, Converter={StaticResource BoolToVis}}">
-                    <TextBlock VerticalAlignment="Center" Margin="0,0,6,0" Text="Minutos:" />
-                    <TextBox x:Name="GrantMinutesBox" Width="60" VerticalAlignment="Center" Margin="0,0,10,0"
-                             Text="{Binding GrantMinutesText, UpdateSourceTrigger=PropertyChanged}" />
-                    <TextBlock VerticalAlignment="Center" Margin="0,0,6,0" Text="Contraseña:" />
-                    <PasswordBox x:Name="GrantPasswordBox" Width="220" VerticalAlignment="Center" Margin="0,0,10,0" />
-                    <Button Content="Confirmar" Padding="10,4" Margin="0,0,8,0" Click="OnGrantConfirmClick" />
-                    <Button Content="Cancelar" Padding="10,4" Command="{Binding CancelGrantCommand}" />
+                Style="{StaticResource Card}">
+            <StackPanel>
+                <TextBlock Style="{StaticResource SectionHeader}" Text="Tiempo extra para hoy" />
+                <StackPanel Orientation="Horizontal">
+                    <Button Content="Regalar tiempo"
+                            Style="{StaticResource PrimaryButton}"
+                            Command="{Binding OpenGrantCommand}"
+                            Visibility="{Binding ShowGrantButton, Converter={StaticResource BoolToVis}}" />
+                    <StackPanel Orientation="Horizontal"
+                                Visibility="{Binding ShowGrantInputs, Converter={StaticResource BoolToVis}}">
+                        <TextBlock VerticalAlignment="Center" Margin="0,0,6,0" Text="Minutos:" />
+                        <TextBox x:Name="GrantMinutesBox" Width="60" VerticalAlignment="Center" Margin="0,0,10,0"
+                                 Text="{Binding GrantMinutesText, UpdateSourceTrigger=PropertyChanged}" />
+                        <TextBlock VerticalAlignment="Center" Margin="0,0,6,0" Text="Contraseña:" />
+                        <PasswordBox x:Name="GrantPasswordBox" Width="220" VerticalAlignment="Center" Margin="0,0,10,0" />
+                        <Button Content="Confirmar"
+                                Style="{StaticResource PrimaryButton}"
+                                Margin="0,0,8,0"
+                                Click="OnGrantConfirmClick" />
+                        <Button Content="Cancelar" Command="{Binding CancelGrantCommand}" />
+                    </StackPanel>
                 </StackPanel>
             </StackPanel>
         </Border>
@@ -90,84 +137,117 @@
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
 
-            <GroupBox Grid.Column="0" Header="Reglas de uso" Margin="0,0,8,0">
-                <ListBox ItemsSource="{Binding Rules}"
-                         SelectedItem="{Binding SelectedRule, Mode=TwoWay}"
-                         DisplayMemberPath="Display" />
-            </GroupBox>
+            <Border Grid.Column="0" Style="{StaticResource Card}" Margin="0,0,8,0">
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Top"
+                               Style="{StaticResource SectionHeader}"
+                               Text="Reglas de uso" />
+                    <ListView Style="{StaticResource AppListView}"
+                              BorderThickness="0"
+                              ItemsSource="{Binding Rules}"
+                              SelectedItem="{Binding SelectedRule, Mode=TwoWay}"
+                              DisplayMemberPath="Display" />
+                </DockPanel>
+            </Border>
 
-            <GroupBox Grid.Column="1" Header="Editar regla" IsEnabled="{Binding CanEdit}">
-                <StackPanel Margin="4">
-                    <TextBlock Text="Nombre" />
-                    <TextBox Margin="0,2,0,10"
-                             Text="{Binding RuleName, UpdateSourceTrigger=PropertyChanged}" />
+            <Border Grid.Column="1" Style="{StaticResource Card}" IsEnabled="{Binding CanEdit}">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource SectionHeader}" Text="Editar regla" />
 
-                    <CheckBox Margin="0,0,0,10"
-                              Content="Regla activada"
-                              IsChecked="{Binding RuleEnabled}" />
+                        <TextBlock Style="{StaticResource FieldLabel}" Text="Nombre" />
+                        <TextBox Margin="0,0,0,10"
+                                 Text="{Binding RuleName, UpdateSourceTrigger=PropertyChanged}" />
 
-                    <TextBlock Text="Días permitidos" />
-                    <WrapPanel Margin="0,2,0,10">
-                        <CheckBox Margin="0,0,10,0" Content="Lun" IsChecked="{Binding MondayAllowed}" />
-                        <CheckBox Margin="0,0,10,0" Content="Mar" IsChecked="{Binding TuesdayAllowed}" />
-                        <CheckBox Margin="0,0,10,0" Content="Mié" IsChecked="{Binding WednesdayAllowed}" />
-                        <CheckBox Margin="0,0,10,0" Content="Jue" IsChecked="{Binding ThursdayAllowed}" />
-                        <CheckBox Margin="0,0,10,0" Content="Vie" IsChecked="{Binding FridayAllowed}" />
-                        <CheckBox Margin="0,0,10,0" Content="Sáb" IsChecked="{Binding SaturdayAllowed}" />
-                        <CheckBox Content="Dom" IsChecked="{Binding SundayAllowed}" />
-                    </WrapPanel>
+                        <CheckBox Margin="0,0,0,10"
+                                  Content="Regla activada"
+                                  IsChecked="{Binding RuleEnabled}" />
 
-                    <TextBlock Text="Horario permitido (HH:mm)" />
-                    <StackPanel Orientation="Horizontal" Margin="0,2,0,10">
-                        <TextBox Width="70" Text="{Binding StartTimeText, UpdateSourceTrigger=PropertyChanged}" />
-                        <TextBlock Text=" a " VerticalAlignment="Center" />
-                        <TextBox Width="70" Text="{Binding EndTimeText, UpdateSourceTrigger=PropertyChanged}" />
+                        <TextBlock Style="{StaticResource FieldLabel}" Text="Días permitidos" />
+                        <WrapPanel Margin="0,0,0,6">
+                            <CheckBox Style="{StaticResource DayChip}" Content="Lun" IsChecked="{Binding MondayAllowed}" />
+                            <CheckBox Style="{StaticResource DayChip}" Content="Mar" IsChecked="{Binding TuesdayAllowed}" />
+                            <CheckBox Style="{StaticResource DayChip}" Content="Mié" IsChecked="{Binding WednesdayAllowed}" />
+                            <CheckBox Style="{StaticResource DayChip}" Content="Jue" IsChecked="{Binding ThursdayAllowed}" />
+                            <CheckBox Style="{StaticResource DayChip}" Content="Vie" IsChecked="{Binding FridayAllowed}" />
+                            <CheckBox Style="{StaticResource DayChip}" Content="Sáb" IsChecked="{Binding SaturdayAllowed}" />
+                            <CheckBox Style="{StaticResource DayChip}" Content="Dom" IsChecked="{Binding SundayAllowed}" />
+                        </WrapPanel>
+
+                        <TextBlock Style="{StaticResource FieldLabel}" Text="Horario permitido (HH:mm)" />
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                            <TextBox Width="70" Text="{Binding StartTimeText, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBlock Text=" a " VerticalAlignment="Center" />
+                            <TextBox Width="70" Text="{Binding EndTimeText, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
+
+                        <TextBlock Style="{StaticResource FieldLabel}" Text="Límite diario" />
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,14">
+                            <CheckBox VerticalAlignment="Center" Margin="0,0,12,0"
+                                      Content="Sin límite"
+                                      IsChecked="{Binding UnlimitedDailyLimit}" />
+                            <TextBox Width="70"
+                                     IsEnabled="{Binding IsDailyLimitMinutesEditable}"
+                                     Text="{Binding DailyLimitMinutesText, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBlock Text=" minutos" VerticalAlignment="Center" />
+                        </StackPanel>
+
+                        <StackPanel Orientation="Horizontal">
+                            <Button Content="Nueva" Margin="0,0,8,0"
+                                    Command="{Binding NewRuleCommand}" />
+                            <Button Content="Guardar"
+                                    Style="{StaticResource PrimaryButton}"
+                                    Margin="0,0,8,0"
+                                    Command="{Binding SaveCommand}" />
+                            <Button Content="Eliminar"
+                                    Style="{StaticResource DestructiveButton}"
+                                    Command="{Binding DeleteCommand}"
+                                    Visibility="{Binding ShowDeleteButton, Converter={StaticResource BoolToVis}}" />
+                            <Button Content="¿Eliminar definitivamente?"
+                                    Style="{StaticResource DestructiveButton}"
+                                    Margin="0,0,8,0"
+                                    Command="{Binding DeleteCommand}"
+                                    Visibility="{Binding ShowDeleteConfirmation, Converter={StaticResource BoolToVis}}" />
+                            <Button Content="Cancelar"
+                                    Command="{Binding CancelDeleteCommand}"
+                                    Visibility="{Binding ShowDeleteConfirmation, Converter={StaticResource BoolToVis}}" />
+                        </StackPanel>
+
+                        <TextBlock Style="{StaticResource HintText}"
+                                   Margin="0,12,0,0"
+                                   Text="Selecciona una regla de la lista para editarla, o pulsa «Nueva» para crear una." />
                     </StackPanel>
-
-                    <TextBlock Text="Límite diario" />
-                    <StackPanel Orientation="Horizontal" Margin="0,2,0,14">
-                        <CheckBox VerticalAlignment="Center" Margin="0,0,12,0"
-                                  Content="Sin límite"
-                                  IsChecked="{Binding UnlimitedDailyLimit}" />
-                        <TextBox Width="70"
-                                 IsEnabled="{Binding IsDailyLimitMinutesEditable}"
-                                 Text="{Binding DailyLimitMinutesText, UpdateSourceTrigger=PropertyChanged}" />
-                        <TextBlock Text=" minutos" VerticalAlignment="Center" />
-                    </StackPanel>
-
-                    <StackPanel Orientation="Horizontal">
-                        <Button Content="Nueva" Padding="12,4" Margin="0,0,8,0"
-                                Command="{Binding NewRuleCommand}" />
-                        <Button Content="Guardar" Padding="12,4" Margin="0,0,8,0"
-                                Command="{Binding SaveCommand}" />
-                        <Button Content="Eliminar" Padding="12,4"
-                                Command="{Binding DeleteCommand}"
-                                Visibility="{Binding ShowDeleteButton, Converter={StaticResource BoolToVis}}" />
-                        <Button Content="¿Eliminar definitivamente?" Padding="12,4" Margin="0,0,8,0"
-                                Background="#FFF0B4B4"
-                                Command="{Binding DeleteCommand}"
-                                Visibility="{Binding ShowDeleteConfirmation, Converter={StaticResource BoolToVis}}" />
-                        <Button Content="Cancelar" Padding="12,4"
-                                Command="{Binding CancelDeleteCommand}"
-                                Visibility="{Binding ShowDeleteConfirmation, Converter={StaticResource BoolToVis}}" />
-                    </StackPanel>
-
-                    <TextBlock Margin="0,12,0,0"
-                               TextWrapping="Wrap"
-                               FontStyle="Italic"
-                               Foreground="Gray"
-                               Text="Selecciona una regla de la lista para editarla, o pulsa «Nueva» para crear una." />
-                </StackPanel>
-            </GroupBox>
+                </ScrollViewer>
+            </Border>
         </Grid>
 
-        <StackPanel Grid.Row="5" Margin="0,8,0,0">
-            <TextBlock TextWrapping="Wrap"
-                       Foreground="#FFB00000"
-                       Text="{Binding ErrorMessage}" />
-            <TextBlock TextWrapping="Wrap"
-                       Foreground="#FF1B7A1B"
-                       Text="{Binding StatusMessage}" />
+        <StackPanel Grid.Row="5" Margin="0,4,0,0">
+            <Border Style="{StaticResource ErrorMessageBanner}" Margin="0,4,0,0">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock FontFamily="{StaticResource IconFont}"
+                               Text="&#xEA39;"
+                               FontSize="16"
+                               Foreground="{StaticResource DangerBrush}"
+                               VerticalAlignment="Center"
+                               Margin="0,0,10,0" />
+                    <TextBlock Text="{Binding ErrorMessage}"
+                               TextWrapping="Wrap"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+            </Border>
+            <Border Style="{StaticResource StatusMessageBanner}" Margin="0,4,0,0">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock FontFamily="{StaticResource IconFont}"
+                               Text="&#xE73E;"
+                               FontSize="16"
+                               Foreground="{StaticResource SuccessBrush}"
+                               VerticalAlignment="Center"
+                               Margin="0,0,10,0" />
+                    <TextBlock Text="{Binding StatusMessage}"
+                               TextWrapping="Wrap"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+            </Border>
         </StackPanel>
     </Grid>
 </UserControl>

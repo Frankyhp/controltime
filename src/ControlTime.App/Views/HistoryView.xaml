@@ -15,61 +15,84 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <Border Grid.Row="0"
-                Padding="16"
-                Margin="0,0,0,12"
-                BorderBrush="#FFB9C4D4"
-                BorderThickness="1"
-                Background="#FFFFFFFF">
-            <StackPanel Orientation="Horizontal">
-                <StackPanel VerticalAlignment="Center">
-                    <TextBlock Text="Uso de la semana actual" Foreground="#FF5A6B80" FontSize="12" />
-                    <TextBlock Text="{Binding WeekUsageText}" FontSize="26" FontWeight="SemiBold" />
+        <Border Grid.Row="0" Style="{StaticResource Card}" Margin="0,0,0,10">
+            <DockPanel LastChildFill="False">
+                <StackPanel DockPanel.Dock="Left" VerticalAlignment="Center">
+                    <TextBlock Style="{StaticResource CardLabel}" Text="Uso de la semana actual" />
+                    <TextBlock Text="{Binding WeekUsageText}"
+                               FontSize="34"
+                               FontWeight="SemiBold"
+                               Typography.NumeralAlignment="Tabular" />
                 </StackPanel>
-                <Button Content="Actualizar"
+                <Button DockPanel.Dock="Right"
+                        Content="Actualizar"
                         Command="{Binding RefreshCommand}"
                         VerticalAlignment="Center"
-                        Margin="24,0,0,0"
-                        Padding="12,4" />
-            </StackPanel>
+                        Padding="14,6" />
+            </DockPanel>
         </Border>
 
         <ListView Grid.Row="1"
+                  Style="{StaticResource AppListView}"
                   ItemsSource="{Binding Days}"
                   SelectedItem="{Binding SelectedDay}"
-                  SelectionMode="Single"
-                  BorderBrush="#FFB9C4D4"
-                  BorderThickness="1">
+                  SelectionMode="Single">
             <ListView.View>
                 <GridView>
                     <GridViewColumn Header="Día" Width="240" DisplayMemberBinding="{Binding Label}" />
-                    <GridViewColumn Header="Uso" Width="100" DisplayMemberBinding="{Binding UsageText}" />
-                    <GridViewColumn Header="Bonus" Width="100" DisplayMemberBinding="{Binding BonusText}" />
+                    <GridViewColumn Header="Uso" Width="100">
+                        <GridViewColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Style="{StaticResource NumericCell}" Text="{Binding UsageText}" />
+                            </DataTemplate>
+                        </GridViewColumn.CellTemplate>
+                    </GridViewColumn>
+                    <GridViewColumn Header="Bonus" Width="100">
+                        <GridViewColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Style="{StaticResource NumericCell}" Text="{Binding BonusText}" />
+                            </DataTemplate>
+                        </GridViewColumn.CellTemplate>
+                    </GridViewColumn>
                 </GridView>
             </ListView.View>
         </ListView>
 
-        <StackPanel Grid.Row="2" Margin="0,12,0,0">
-            <TextBlock Text="Sesiones del día seleccionado"
-                       Foreground="#FF5A6B80"
-                       FontSize="12"
-                       Margin="0,0,0,4" />
-            <ListView ItemsSource="{Binding SelectedDaySessions}"
-                      Height="140"
-                      BorderBrush="#FFB9C4D4"
-                      BorderThickness="1">
-                <ListView.View>
-                    <GridView>
-                        <GridViewColumn Header="Sesión" Width="240" DisplayMemberBinding="{Binding PeriodText}" />
-                        <GridViewColumn Header="Duración" Width="100" DisplayMemberBinding="{Binding DurationText}" />
-                    </GridView>
-                </ListView.View>
-            </ListView>
-            <TextBlock Text="{Binding ErrorMessage}"
-                       TextWrapping="Wrap"
-                       Margin="0,8,0,0"
-                       Foreground="#FFB71C1C"
-                       Visibility="{Binding HasError, Converter={StaticResource BoolToVis}}" />
-        </StackPanel>
+        <Border Grid.Row="2" Style="{StaticResource Card}" Margin="0,10,0,0">
+            <StackPanel>
+                <TextBlock Style="{StaticResource SectionHeader}" Text="Sesiones del día seleccionado" />
+                <ListView Style="{StaticResource AppListView}"
+                          ItemsSource="{Binding SelectedDaySessions}"
+                          Height="140">
+                    <ListView.View>
+                        <GridView>
+                            <GridViewColumn Header="Sesión" Width="240" DisplayMemberBinding="{Binding PeriodText}" />
+                            <GridViewColumn Header="Duración" Width="100">
+                                <GridViewColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Style="{StaticResource NumericCell}" Text="{Binding DurationText}" />
+                                    </DataTemplate>
+                                </GridViewColumn.CellTemplate>
+                            </GridViewColumn>
+                        </GridView>
+                    </ListView.View>
+                </ListView>
+                <Border Style="{StaticResource DangerBanner}"
+                        Margin="0,8,0,0"
+                        Visibility="{Binding HasError, Converter={StaticResource BoolToVis}}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock FontFamily="{StaticResource IconFont}"
+                                   Text="&#xEA39;"
+                                   FontSize="16"
+                                   Foreground="{StaticResource DangerBrush}"
+                                   VerticalAlignment="Center"
+                                   Margin="0,0,10,0" />
+                        <TextBlock Text="{Binding ErrorMessage}"
+                                   TextWrapping="Wrap"
+                                   VerticalAlignment="Center" />
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </Border>
     </Grid>
 </UserControl>

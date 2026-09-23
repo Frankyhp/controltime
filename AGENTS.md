@@ -179,6 +179,12 @@ Created:
 * `ControlTime.App` shell: `MainWindow` now a 216 px left nav rail (glyph `RadioButton`s, same bindings/commands) + white rounded content surface
 * `ControlTime.App` Dashboard / Rules / History / Settings / `AdminExitWindow` restyled to cards, banners, chips and flat tables; all bindings, names, handlers and behaviour unchanged (presentation-only)
 
+* `docs/phases/phase-21.md`
+* Repository-root `Directory.Build.props`: centralized `<Version>` (1.0.0) applied to all projects and injected into the installer
+* `build/publish.ps1`: publishes App + Service (`win-x64`, self-contained) to `publish\` and compiles the installer with Inno Setup `ISCC.exe` into `dist\` (`-SkipInstaller` to omit)
+* `installer/ControlTime.iss`: per-machine Inno Setup installer (fixed `AppId`, Spanish UI, `%PROGRAMFILES%\ControlTime` with Service under `{app}\Service`); registers `ControlTimeService` via `sc create start= delayed-auto obj= LocalSystem` + `sc failure restart/60000 ×3` + `sc start`; stops Service and closes the App before upgrade file copy; uninstall runs `sc stop`/`sc delete` and preserves `%PROGRAMDATA%\ControlTime` unless the user confirms deletion in a dialog
+* No global autostart installed: the Phase 15 per-user in-app startup toggle remains the only startup mechanism
+
 Phase 17 was split into `Phase 17a — Windows Service Foundation` and `Phase 17b — Service IPC and App Client`.
 
 Phase 17a — Windows Service Foundation is complete.
@@ -193,11 +199,13 @@ Phase 20 — Reliability and Recovery is complete.
 
 Redesign Phase 01 — Visual Design System is complete (presentation-only, inserted after Phase 19, no renumbering).
 
+Phase 21 — Installer and Distribution is complete (install/upgrade/uninstall manual checklist pending on a target machine).
+
 Current phase:
 
-`Phase 21 — Installer and Distribution` (not started)
+`Phase 22 — Release Candidate and Version 1.0` (not started)
 
-Do not implement functionality belonging to Phase 21 or later without planning Phase 21 first.
+Do not implement functionality belonging to Phase 22 or later without planning Phase 22 first.
 
 ---
 

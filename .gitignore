@@ -187,6 +187,9 @@ DocProject/Help/html
 # Click-Once directory
 publish/
 
+# Release artifacts (build/publish.ps1)
+dist/
+
 # Publish Web Output
 *.[Pp]ublish.xml
 *.azurePubxml

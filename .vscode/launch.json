@@ -2,7 +2,47 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "ControlTime (debug: sin bloqueo de sesión)",
+      "name": "ControlTime (App + Service, sin bloqueo)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build ControlTime (App + Service)",
+      "program": "${workspaceFolder}/src/ControlTime.App/bin/Debug/net10.0-windows/ControlTime.App.exe",
+      "cwd": "${workspaceFolder}",
+      "console": "internalConsole",
+      "env": {
+        "CONTROLTIME_ENFORCEMENT": "off"
+      }
+    },
+    {
+      "name": "ControlTime.Service (sin bloqueo)",
+      "type": "coreclr",
+      "request": "launch",
+      "program": "${workspaceFolder}/src/ControlTime.Service/bin/Debug/net10.0-windows/ControlTime.Service.exe",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "env": {
+        "CONTROLTIME_ENFORCEMENT": "off"
+      }
+    },
+    {
+      "name": "ControlTime (App + Service, con bloqueo)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build ControlTime (App + Service)",
+      "program": "${workspaceFolder}/src/ControlTime.App/bin/Debug/net10.0-windows/ControlTime.App.exe",
+      "cwd": "${workspaceFolder}",
+      "console": "internalConsole"
+    },
+    {
+      "name": "ControlTime.Service (con bloqueo)",
+      "type": "coreclr",
+      "request": "launch",
+      "program": "${workspaceFolder}/src/ControlTime.Service/bin/Debug/net10.0-windows/ControlTime.Service.exe",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "ControlTime (solo App, sin Servicio)",
       "type": "coreclr",
       "request": "launch",
       "preLaunchTask": "build ControlTime",
@@ -12,15 +52,24 @@
       "env": {
         "CONTROLTIME_ENFORCEMENT": "off"
       }
+    }
+  ],
+  "compounds": [
+    {
+      "name": "ControlTime (depuración completa: sin bloqueo)",
+      "configurations": [
+        "ControlTime (App + Service, sin bloqueo)",
+        "ControlTime.Service (sin bloqueo)"
+      ],
+      "stopAll": true
     },
     {
-      "name": "ControlTime (debug: con bloqueo de sesión)",
-      "type": "coreclr",
-      "request": "launch",
-      "preLaunchTask": "build ControlTime",
-      "program": "${workspaceFolder}/src/ControlTime.App/bin/Debug/net10.0-windows/ControlTime.App.exe",
-      "cwd": "${workspaceFolder}",
-      "console": "internalConsole"
+      "name": "ControlTime (depuración completa: con bloqueo)",
+      "configurations": [
+        "ControlTime (App + Service, con bloqueo)",
+        "ControlTime.Service (con bloqueo)"
+      ],
+      "stopAll": true
     }
   ]
 }

@@ -11,6 +11,17 @@
         "/property:GenerateFullPaths=true"
       ],
       "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "build ControlTime (App + Service)",
+      "command": "dotnet",
+      "type": "process",
+      "args": [
+        "build",
+        "${workspaceFolder}/ControlTime.slnx",
+        "/property:GenerateFullPaths=true"
+      ],
+      "problemMatcher": "$msCompile"
     }
   ]
 }

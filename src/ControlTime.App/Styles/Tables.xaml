@@ -20,7 +20,7 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ListViewItem">
-                    <Grid>
+                    <Grid TextElement.Foreground="{TemplateBinding Foreground}">
                         <Border x:Name="Bg"
                                 Background="{TemplateBinding Background}"
                                 MinHeight="34"

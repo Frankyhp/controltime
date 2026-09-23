@@ -185,6 +185,11 @@ Created:
 * `installer/ControlTime.iss`: per-machine Inno Setup installer (fixed `AppId`, Spanish UI, `%PROGRAMFILES%\ControlTime` with Service under `{app}\Service`); registers `ControlTimeService` via `sc create start= delayed-auto obj= LocalSystem` + `sc failure restart/60000 ×3` + `sc start`; stops Service and closes the App before upgrade file copy; uninstall runs `sc stop`/`sc delete` and preserves `%PROGRAMDATA%\ControlTime` unless the user confirms deletion in a dialog
 * No global autostart installed: the Phase 15 per-user in-app startup toggle remains the only startup mechanism
 
+* `docs/phases/phase-22.md`
+* `docs/manual-testing.md`: reusable manual regression script (auth, rules, bonus, activity, tracking, history, warnings, enforcement, tray/startup, Service, install/upgrade/uninstall)
+* `README.md` rewritten to the current architecture (App + Service, ProgramData database, installer, file logs)
+* `Directory.Build.props` extended with Product/Company/Copyright assembly metadata; installer Setup gains `VersionInfoCompany`/`VersionInfoCopyright` (verified on published executables and Setup: FileVersion 1.0.0.0, ProductName/Copyright/Company ControlTime)
+
 Phase 17 was split into `Phase 17a — Windows Service Foundation` and `Phase 17b — Service IPC and App Client`.
 
 Phase 17a — Windows Service Foundation is complete.
@@ -201,11 +206,13 @@ Redesign Phase 01 — Visual Design System is complete (presentation-only, inser
 
 Phase 21 — Installer and Distribution is complete (install/upgrade/uninstall manual checklist pending on a target machine).
 
+Phase 22 — Release Candidate and Version 1.0 is in progress: plan written (`docs/phases/phase-22.md`), automated tasks complete (regression script, README, version metadata, suite green, Setup built). Pending: manual regression on a target machine and, after it passes, commit + annotated tag `v1.0.0` + GitHub Release (each git action requires explicit user confirmation).
+
 Current phase:
 
-`Phase 22 — Release Candidate and Version 1.0` (not started)
+`Phase 22 — Release Candidate and Version 1.0` (in progress — manual regression pending)
 
-Do not implement functionality belonging to Phase 22 or later without planning Phase 22 first.
+Do not implement functionality belonging to Phase 22 or later without planning Phase 22 first. Phase 22 adds no new functionality: fixes only, driven by the regression.
 
 ---
 

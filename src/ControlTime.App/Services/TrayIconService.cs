@@ -1,5 +1,6 @@
 using System.Drawing;
 using System.Globalization;
+using System.IO;
 using System.Windows;
 using System.Windows.Forms;
 using ControlTime.Core.Abstractions;
@@ -63,13 +64,33 @@ public sealed class TrayIconService : INotifier, IDisposable
 
         _notifyIcon = new NotifyIcon
         {
-            Icon = SystemIcons.Application,
+            Icon = LoadAppIcon(),
             Text = "ControlTime",
             ContextMenuStrip = menu,
             Visible = true,
         };
 
         _notifyIcon.DoubleClick += (_, _) => ShowMainWindow();
+    }
+
+    private Icon LoadAppIcon()
+    {
+        try
+        {
+            var info = System.Windows.Application.GetResourceStream(
+                new Uri("pack://application:,,,/Assets/controltime.ico"));
+            if (info is not null)
+            {
+                using Stream stream = info.Stream;
+                return new Icon(stream);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "No se pudo cargar el icono de la bandeja; se usa el icono por defecto.");
+        }
+
+        return SystemIcons.Application;
     }
 
     public event Action? ExitRequested;

@@ -190,6 +190,11 @@ Created:
 * `README.md` rewritten to the current architecture (App + Service, ProgramData database, installer, file logs)
 * `Directory.Build.props` extended with Product/Company/Copyright assembly metadata; installer Setup gains `VersionInfoCompany`/`VersionInfoCopyright` (verified on published executables and Setup: FileVersion 1.0.0.0, ProductName/Copyright/Company ControlTime)
 
+* `docs/phases/phase-23.md`
+* `ControlTime.App` floating remaining-time overlay (version 1.1, presentation-only): `Views/TimerOverlayWindow` (borderless, transparent background, semi-transparent `H:mm` text with drop shadow, always-on-top with `Deactivated` re-assert, `DragMove`, no focus stealing) and `Services/TimerOverlayController` (singleton): formats `Snapshot.RemainingTime` from `ServiceClientHost` state, shows the overlay only while the Service is available (auto-hide/auto-restore without touching the preference), toggled from the tray
+* `ControlTime.App` tray menu gains checkable "Mostrar tiempo restante en pantalla" (`TimerOverlayToggleRequested` + `SetTimerOverlayPreference`); preference and window position persisted under app settings keys `TimerOverlayVisible` / `TimerOverlayLeft` / `TimerOverlayTop` (position clamped to the virtual screen; default top-right of primary work area)
+* `Directory.Build.props` `<Version>` bumped to `1.1.0`
+
 Phase 17 was split into `Phase 17a — Windows Service Foundation` and `Phase 17b — Service IPC and App Client`.
 
 Phase 17a — Windows Service Foundation is complete.
@@ -206,13 +211,15 @@ Redesign Phase 01 — Visual Design System is complete (presentation-only, inser
 
 Phase 21 — Installer and Distribution is complete (install/upgrade/uninstall manual checklist pending on a target machine).
 
-Phase 22 — Release Candidate and Version 1.0 is in progress: plan written (`docs/phases/phase-22.md`), automated tasks complete (regression script, README, version metadata, suite green, Setup built). Pending: manual regression on a target machine and, after it passes, commit + annotated tag `v1.0.0` + GitHub Release (each git action requires explicit user confirmation).
+Phase 22 — Release Candidate and Version 1.0 is in progress: plan written (`docs/phases/phase-22.md`), automated tasks complete (regression script, README, version metadata, suite green, Setup built). Pending: manual regression on a target machine and, after it passes, commit + annotated tag `v1.0.0` + GitHub Release (each git action requires explicit user confirmation). Note: the repository `<Version>` is already `1.1.0` because Phase 23 was implemented by explicit user decision before tagging `v1.0.0`; the `v1.0.0` tag (when confirmed) must be placed on the commit that passes the regression, and the 1.1 release will follow Phase 23's own validation.
+
+Phase 23 — Floating Remaining-Time Overlay is complete (implemented by explicit user request as version 1.1; manual validation checklist in `docs/phases/phase-23.md` pending on a target machine).
 
 Current phase:
 
-`Phase 22 — Release Candidate and Version 1.0` (in progress — manual regression pending)
+`Phase 22 — Release Candidate and Version 1.0` (in progress — manual regression and `v1.0.0` tag/release pending)
 
-Do not implement functionality belonging to Phase 22 or later without planning Phase 22 first. Phase 22 adds no new functionality: fixes only, driven by the regression.
+Do not implement functionality belonging to future phases without planning them first. Phase 22 adds no new functionality: fixes only, driven by the regression.
 
 ---
 

@@ -1106,6 +1106,39 @@ v1.0.0
 
 ---
 
+# Phase 23 — Floating Remaining-Time Overlay
+
+## Goal
+
+Show a movable always-on-top floating timer with today's remaining usage
+time, toggled from the system tray menu.
+
+## Scope
+
+* Presentation only in `ControlTime.App` (v1.1).
+* No changes to Core, Service, Infrastructure or IPC.
+
+## Features
+
+* Borderless transparent always-on-top overlay window showing remaining
+  time as `H:mm` with semi-transparent text.
+* Movable by dragging.
+* Show/hide toggle ("Mostrar tiempo restante en pantalla") in the tray
+  context menu.
+* Visibility preference and window position persisted in app settings.
+* Overlay automatically hides while the Windows Service is unavailable
+  and reappears when the Service returns, if the preference is visible.
+
+## Out of scope
+
+* Click-through overlay.
+* Overlay on the Windows lock screen (secure desktop makes this
+  impossible for any normal window).
+* Configurable font size, color or opacity.
+* Seconds resolution.
+
+---
+
 # Product milestones
 
 ## Milestone A — Rules prototype

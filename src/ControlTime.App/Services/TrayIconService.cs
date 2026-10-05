@@ -26,6 +26,7 @@ public sealed class TrayIconService : INotifier, IDisposable
     private readonly NotifyIcon _notifyIcon;
     private readonly ToolStripMenuItem _stateItem = new("Estado: —") { Enabled = false };
     private readonly ToolStripMenuItem _remainingItem = new("Tiempo restante: —") { Enabled = false };
+    private readonly ToolStripMenuItem _timerOverlayItem = new("Mostrar tiempo restante en pantalla");
 
     private bool _disposed;
 
@@ -53,8 +54,11 @@ public sealed class TrayIconService : INotifier, IDisposable
         ToolStripMenuItem exitItem = new("Salir de ControlTime");
         exitItem.Click += (_, _) => ExitRequested?.Invoke();
 
+        _timerOverlayItem.Click += (_, _) => TimerOverlayToggleRequested?.Invoke();
+
         menu.Items.AddRange([
             openItem,
+            _timerOverlayItem,
             new ToolStripSeparator(),
             _stateItem,
             _remainingItem,
@@ -94,6 +98,16 @@ public sealed class TrayIconService : INotifier, IDisposable
     }
 
     public event Action? ExitRequested;
+
+    public event Action? TimerOverlayToggleRequested;
+
+    public void SetTimerOverlayPreference(bool visible)
+    {
+        if (!_disposed)
+        {
+            _timerOverlayItem.Checked = visible;
+        }
+    }
 
     public void UpdateState(MonitorState state)
     {

@@ -29,6 +29,7 @@ public partial class App : Application
     private Action<MonitorState>? _trayStateChangedHandler;
     private Action<bool>? _trayAvailabilityHandler;
     private Mutex? _instanceMutex;
+    private TimerOverlayController? _timerOverlay;
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -112,6 +113,26 @@ public partial class App : Application
 
         trayIcon.ExitRequested += HandleTrayExit;
 
+        TimerOverlayController timerOverlay = services.GetRequiredService<TimerOverlayController>();
+        _timerOverlay = timerOverlay;
+
+        ILogger<TimerOverlayController> timerOverlayLogger =
+            services.GetRequiredService<ILogger<TimerOverlayController>>();
+
+        trayIcon.TimerOverlayToggleRequested += () =>
+        {
+            try
+            {
+                _ = timerOverlay.ToggleAsync();
+            }
+            catch (Exception ex)
+            {
+                timerOverlayLogger.LogError(ex, "No se pudo cambiar la visibilidad del timer en pantalla.");
+            }
+        };
+
+        _ = timerOverlay.InitializeAsync();
+
         _trayStateChangedHandler = state =>
         {
             try
@@ -169,6 +190,8 @@ public partial class App : Application
             }
         }
 
+        _timerOverlay?.Shutdown();
+
         _services?.Dispose();
         base.OnExit(e);
     }
@@ -195,6 +218,7 @@ public partial class App : Application
         _services.GetRequiredService<ILogger<App>>()
             .LogInformation("Salida de ControlTime confirmada desde la bandeja.");
 
+        _timerOverlay?.Shutdown();
         window?.CloseForShutdown();
         Shutdown();
     }
@@ -274,6 +298,14 @@ public partial class App : Application
             provider.GetRequiredService<ILogger<TrayIconService>>()));
         services.AddSingleton<INotifier>(
             provider => provider.GetRequiredService<TrayIconService>());
+
+        services.AddSingleton<TimerOverlayWindow>();
+        services.AddSingleton<TimerOverlayController>(provider => new TimerOverlayController(
+            provider.GetRequiredService<TimerOverlayWindow>(),
+            provider.GetRequiredService<ServiceClientHost>(),
+            provider.GetRequiredService<TrayIconService>(),
+            provider.GetRequiredService<IAppSettingsStore>(),
+            provider.GetRequiredService<ILogger<TimerOverlayController>>()));
 
         services.AddTransient<DashboardViewModel>();
         services.AddTransient<RulesViewModel>();

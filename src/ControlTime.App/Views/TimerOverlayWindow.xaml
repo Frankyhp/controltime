@@ -1,0 +1,29 @@
+<Window x:Class="ControlTime.App.Views.TimerOverlayWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="ControlTime — tiempo restante"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        ResizeMode="NoResize"
+        ShowInTaskbar="False"
+        Topmost="True"
+        SizeToContent="WidthAndHeight"
+        WindowStartupLocation="Manual"
+        Cursor="SizeAll"
+        SnapsToDevicePixels="True">
+    <TextBlock x:Name="RemainingTextBlock"
+               FontFamily="Segoe UI"
+               FontSize="48"
+               FontWeight="Bold"
+               Foreground="#99FFFFFF"
+               Typography.NumeralAlignment="Tabular"
+               Padding="18,6,18,10">
+        <TextBlock.Effect>
+            <DropShadowEffect BlurRadius="10"
+                              ShadowDepth="2"
+                              Opacity="0.65"
+                              Color="Black" />
+        </TextBlock.Effect>
+    </TextBlock>
+</Window>

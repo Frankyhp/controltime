@@ -1056,7 +1056,7 @@ Do not select installer technology prematurely.
 
 ---
 
-# Phase 22 — Release Candidate and Version 1.0
+# Phase 22 — Release Candidate and Version 1.1
 
 ## Goal
 
@@ -1103,6 +1103,8 @@ Tag the release:
 ```text
 v1.0.0
 ```
+
+(Updated during implementation: the `v1.0.0` tag was dropped — Phase 23 shipped before any tag existed and no 1.0 artifact was ever published; the first release is tagged `v1.1.0`. See `docs/phases/phase-22.md`.)
 
 ---
 
@@ -1204,12 +1206,12 @@ Closing the UI no longer disables enforcement and the application is robust enou
 
 ```text
 Phase 21 — Installer
-Phase 22 — Release Candidate / 1.0
+Phase 22 — Release Candidate / 1.1
 ```
 
 Result:
 
-Installable and tested ControlTime 1.0.
+Installable and tested ControlTime 1.1 (the originally planned 1.0 tag was dropped; see Phase 22).
 
 ---
 

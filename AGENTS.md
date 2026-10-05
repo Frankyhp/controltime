@@ -212,13 +212,13 @@ Redesign Phase 01 — Visual Design System is complete (presentation-only, inser
 
 Phase 21 — Installer and Distribution is complete (install/upgrade/uninstall manual checklist pending on a target machine).
 
-Phase 22 — Release Candidate and Version 1.0 is in progress: plan written (`docs/phases/phase-22.md`), automated tasks complete (regression script, README, version metadata, suite green, Setup built). Pending: manual regression on a target machine and, after it passes, commit + annotated tag `v1.0.0` + GitHub Release (each git action requires explicit user confirmation). Note: the repository `<Version>` is already `1.1.0` because Phase 23 was implemented by explicit user decision before tagging `v1.0.0`; the `v1.0.0` tag (when confirmed) must be placed on the commit that passes the regression, and the 1.1 release will follow Phase 23's own validation.
+Phase 22 — Release Candidate and Version 1.1 is in progress: plan written (`docs/phases/phase-22.md`), automated tasks complete (regression script, README, version metadata, suite green, Setup built). Pending: manual regression on a target machine (including Phase 23's checklist) and, after it passes, commit + annotated tag `v1.1.0` + GitHub Release with `ControlTime-Setup-1.1.0.exe` (each git action requires explicit user confirmation). Decision: the originally planned `v1.0.0` tag was dropped — Phase 23 was implemented by explicit user decision before the tag existed, `<Version>` is already `1.1.0` and no 1.0 artifact was ever published, so the first release is `v1.1.0`.
 
 Phase 23 — Floating Remaining-Time Overlay is complete (implemented by explicit user request as version 1.1; manual validation checklist in `docs/phases/phase-23.md` pending on a target machine).
 
 Current phase:
 
-`Phase 22 — Release Candidate and Version 1.0` (in progress — manual regression and `v1.0.0` tag/release pending)
+`Phase 22 — Release Candidate and Version 1.1` (in progress — manual regression and `v1.1.0` tag/release pending)
 
 Do not implement functionality belonging to future phases without planning them first. Phase 22 adds no new functionality: fixes only, driven by the regression.
 

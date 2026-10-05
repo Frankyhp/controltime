@@ -6,7 +6,7 @@ Show a movable, always-on-top floating timer with today's remaining usage time, 
 
 ## Scope
 
-* Version 1.1 (after the `v1.0.0` release).
+* Version 1.1 (first published release; the planned `v1.0.0` was never tagged — see `phase-22.md`).
 * Presentation only in `ControlTime.App`.
 * No changes to Core, Service, Infrastructure or IPC: remaining time already arrives every second via `ServiceClientHost.StateChanged` (`MonitorState.Snapshot.RemainingTime`).
 
@@ -51,7 +51,7 @@ Show a movable, always-on-top floating timer with today's remaining usage time, 
 * The App is purely a presenter, so the overlay lives entirely in the App; the Service and IPC are untouched.
 * The overlay hides (rather than showing stale/`—` data) while the Service is unavailable: without the Service there are no trustworthy numbers to display.
 * Visibility and position are persisted; the default position is top-right of the primary work area.
-* Implemented as v1.1, after the `v1.0.0` tag; the fixed-`AppId` installer already supports the upgrade.
+* Implemented as v1.1 by explicit user decision, before any release tag existed; `v1.0.0` was dropped and 1.1.0 became the first release (`v1.1.0`); the fixed-`AppId` installer already supports the upgrade.
 * `ShowActivated=False`: showing the overlay never steals keyboard focus.
 
 ## Known limitations

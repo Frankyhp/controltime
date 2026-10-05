@@ -34,11 +34,13 @@ public sealed class DashboardService
         TimeSpan utcOffset,
         CancellationToken cancellationToken = default)
     {
-        DateTimeOffset now = _timeProvider.GetUtcNow();
+        // La evaluación de reglas (día de la semana y franja horaria) debe
+        // hacerse en la hora local del usuario, no en UTC.
+        DateTimeOffset now = _timeProvider.GetUtcNow().ToOffset(utcOffset);
 
         IReadOnlyList<UsageRule> rules = await _ruleStore.GetAllAsync(cancellationToken);
 
-        DateOnly today = DateOnly.FromDateTime(now.ToOffset(utcOffset).DateTime);
+        DateOnly today = DateOnly.FromDateTime(now.DateTime);
 
         IReadOnlyList<TimeGrant> grants = await _grantStore.GetGrantsForDayAsync(
             today,

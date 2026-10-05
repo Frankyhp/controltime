@@ -185,6 +185,49 @@ public class DashboardServiceTests
         Assert.Equal(TimeSpan.FromMinutes(60), snapshot.RemainingTime);
     }
 
+    [Fact]
+    public async Task GetSnapshot_LocalOffset_EvaluatesScheduleInLocalTime()
+    {
+        // Local Monday 09:30 at offset +2 is Monday 07:30 UTC: the schedule
+        // and the day of week must be evaluated in local time, not UTC.
+        var utcNow = new DateTimeOffset(2026, 6, 8, 7, 30, 0, TimeSpan.Zero);
+        TimeSpan offset = TimeSpan.FromHours(2);
+
+        UsageRule mondayRule = CreateRule(
+            days: [DayOfWeek.Monday],
+            startHour: 9,
+            endHour: 18,
+            limitMinutes: 500);
+
+        var service = CreateService(utcNow, mondayRule);
+
+        var snapshot = await service.GetSnapshotAsync(offset);
+
+        Assert.Equal(AccessState.Allowed, snapshot.State);
+        Assert.Equal(TimeSpan.FromMinutes(500), snapshot.RemainingTime);
+    }
+
+    [Fact]
+    public async Task GetSnapshot_LocalOffset_EvaluatesDayOfWeekInLocalTime()
+    {
+        // Local Tuesday 00:30 at offset +2 is Monday 22:30 UTC: a rule that
+        // only allows Tuesday must see Tuesday, not Monday.
+        var utcNow = new DateTimeOffset(2026, 6, 8, 22, 30, 0, TimeSpan.Zero);
+        TimeSpan offset = TimeSpan.FromHours(2);
+
+        UsageRule tuesdayRule = CreateRule(
+            days: [DayOfWeek.Tuesday],
+            startHour: 0,
+            endHour: 23,
+            limitMinutes: null);
+
+        var service = CreateService(utcNow, tuesdayRule);
+
+        var snapshot = await service.GetSnapshotAsync(offset);
+
+        Assert.Equal(AccessState.Allowed, snapshot.State);
+    }
+
     private static UsageSession CreateSession(DateTimeOffset startedAt, DateTimeOffset endedAt)
     {
         var result = UsageSession.TryCreate(startedAt, endedAt, out var session);

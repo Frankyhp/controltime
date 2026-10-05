@@ -54,6 +54,14 @@ public sealed class UsageTrackingService(
             {
                 _openSession = await _sessionStore.GetOpenSessionAsync(cancellationToken);
                 _loaded = true;
+
+                if (_openSession is UsageSession orphan)
+                {
+                    // La sesión no la ha observado este proceso: el tramo final
+                    // es desconocido y no puede convertirse en uso.
+                    await DiscardUnobservedTailAsync(orphan, cancellationToken);
+                    return;
+                }
             }
 
             if (_openSession is UsageSession open)
@@ -74,6 +82,15 @@ public sealed class UsageTrackingService(
         {
             _openSession = await _sessionStore.GetOpenSessionAsync(cancellationToken);
             _loaded = true;
+
+            if (_openSession is UsageSession orphan)
+            {
+                // Una sesión huérfana tiene un tramo final sin observar
+                // (parada brusca del servicio, apagado o fallo del equipo):
+                // conservarla convertría en uso real tiempo que no se ha
+                // monitorizado, inflando el uso del día hasta la hora actual.
+                await DiscardUnobservedTailAsync(orphan, cancellationToken);
+            }
         }
 
         if (status.State == ActivityState.Active)
@@ -93,6 +110,32 @@ public sealed class UsageTrackingService(
         {
             _openSession = null;
             await CloseAsync(open, status.LastInputAt, "la inactividad", cancellationToken);
+        }
+    }
+
+    private async Task DiscardUnobservedTailAsync(
+        UsageSession orphan,
+        CancellationToken cancellationToken)
+    {
+        _openSession = null;
+
+        if (orphan.TryClose(orphan.StartedAt, out UsageSession? closed).Success && closed is not null)
+        {
+            await _sessionStore.UpdateAsync(closed, cancellationToken);
+
+            _logger?.LogWarning(
+                "La sesión de uso huérfana {SessionId}, iniciada en {StartedAt:O}, se cierra en su propio inicio " +
+                "sin computar el tramo final no monitorizado tras la interrupción del seguimiento.",
+                orphan.Id,
+                orphan.StartedAt);
+        }
+        else
+        {
+            _logger?.LogError(
+                "No se pudo cerrar la sesión de uso huérfana {SessionId}; se descarta para no dejar datos inválidos.",
+                orphan.Id);
+
+            await _sessionStore.DeleteAsync(orphan.Id, cancellationToken);
         }
     }
 

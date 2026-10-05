@@ -72,20 +72,26 @@ public class UsageTrackingServiceTests
     }
 
     [Fact]
-    public async Task Tick_WhenActive_AdoptsOrphanOpenSessionWithoutCreatingAnother()
+    public async Task Tick_WhenActive_ClosesStaleOrphanWithoutUnobservedUsageAndOpensFreshSession()
     {
         UsageSession.TryCreateOpen(At(-30), out var orphan);
         _store.Sessions.Add(orphan!);
 
         await _service.TickAsync(Status(ActivityState.Active, At(0), Base));
 
-        var session = Assert.Single(_store.Sessions);
-        Assert.Equal(orphan!.Id, session.Id);
-        Assert.NotNull(_service.OpenSession);
+        var stale = Assert.Single(_store.Sessions, s => s.Id == orphan!.Id);
+        Assert.False(stale.IsOpen);
+        Assert.Equal(stale.StartedAt, stale.EndedAt);
+        Assert.Equal(TimeSpan.Zero, stale.Duration);
+
+        var fresh = Assert.Single(_store.Sessions, s => s.IsOpen);
+        Assert.NotEqual(orphan!.Id, fresh.Id);
+        Assert.Equal(Base, fresh.StartedAt);
+        Assert.Equal(fresh.Id, _service.OpenSession!.Id);
     }
 
     [Fact]
-    public async Task FirstTick_IdleWithOrphan_ClosesOrphanAtLastInput()
+    public async Task FirstTick_IdleWithOrphan_ClosesOrphanWithoutUnobservedUsage()
     {
         UsageSession.TryCreateOpen(At(0), out var orphan);
         _store.Sessions.Add(orphan!);
@@ -94,7 +100,32 @@ public class UsageTrackingServiceTests
 
         var session = Assert.Single(_store.Sessions);
         Assert.False(session.IsOpen);
-        Assert.Equal(At(5), session.EndedAt);
+        Assert.Equal(At(0), session.EndedAt);
+        Assert.Equal(TimeSpan.Zero, session.Duration);
+    }
+
+    [Fact]
+    public async Task FirstTick_StaleOrphanAcrossMidnight_DoesNotInflateTodaysUsage()
+    {
+        // A session left open yesterday (service killed / machine off) must not
+        // count today's usage from midnight up to now.
+        var yesterday = Base.AddDays(-1).AddHours(12);
+        UsageSession.TryCreateOpen(yesterday, out var orphan);
+        _store.Sessions.Add(orphan!);
+
+        await _service.TickAsync(Status(ActivityState.Active, Base, Base));
+
+        var dayStart = new DateTimeOffset(
+            DateOnly.FromDateTime(Base.Date).ToDateTime(TimeOnly.MinValue),
+            TimeSpan.Zero);
+
+        var usage = UsageCalculator.GetUsageForDay(
+            _store.Sessions,
+            dayStart,
+            dayStart.AddDays(1),
+            asOf: Base);
+
+        Assert.Equal(TimeSpan.Zero, usage);
     }
 
     [Fact]

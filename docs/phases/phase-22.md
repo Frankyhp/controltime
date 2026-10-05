@@ -45,9 +45,14 @@ Out of scope: code signing, auto-update, ARM64, additional anti-tampering, real 
 - Repository cleanup: `git ls-files` confirms zero tracked build artifacts (`publish/`, `dist/` ignored); no code changes → no functional risk.
 - Not done here (human-required): executing the regression checklist and the install/upgrade/uninstall test on a target machine; commit, `v1.0.0` tag and GitHub Release (explicit confirmation required per action).
 
+## Fixes found during regression
+
+1. **Access state evaluated in UTC** (`DashboardService`): rule day-of-week and schedule window were evaluated against `GetUtcNow()` (UTC) instead of the user's local clock (`utcOffset` was only applied to usage/bonus/day). In UTC+2 this blocked Mondays until 11:00 local and shifted the weekday during the first two local hours. Fix: convert `now` once with `.ToOffset(utcOffset)` before evaluating rules and resolving the active schedule. Reproduced with 2 regression tests (`DashboardServiceTests`).
+2. **Stale orphan usage session inflated daily usage** (`UsageTrackingService`): after an abnormal stop (debugger kill, crash, power loss), the open session was adopted on restart and kept open; while open it counted continuously from the start of the day, so "usage today" equaled the current wall-clock time (visible in the History week total) and inflated days easily exceeded the daily limit, keeping the state `Blocked`. New semantics: an orphan loaded on first tick is closed at its own `StartedAt` (zero length, unobserved tail discarded, warning logged); a fresh session is opened only if the current tick is Active. Matches the fail-safe rule "a monitoring failure must not produce invalid historical data"; graceful stops keep closing at the last observed input via `StopAsync`. Reproduced with 3 regression tests (`UsageTrackingServiceTests`), including the midnight-crossing inflation case.
+
 ## Tests
 
-257 tests green (`dotnet test`), solution build clean (`dotnet build`).
+260 tests green (`dotnet test`), solution build clean (`dotnet build`).
 
 Version metadata verified on rebuilt artifacts: `ControlTime.App.exe` / `ControlTime.Service.exe` — FileVersion 1.0.0.0, ProductName/Copyright/Company "ControlTime"; `ControlTime-Setup-1.0.0.exe` — FileVersion/ProductVersion 1.0.0, ProductName/Company/Copyright "ControlTime".
 

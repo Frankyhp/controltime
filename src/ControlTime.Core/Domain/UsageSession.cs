@@ -35,9 +35,9 @@ public sealed class UsageSession
     {
         session = null;
 
-        if (endedAt <= startedAt)
+        if (endedAt < startedAt)
         {
-            return DomainResult.Invalid("Session end must be later than session start.");
+            return DomainResult.Invalid("Session end must not be earlier than session start.");
         }
 
         session = new UsageSession(id, startedAt, endedAt);

@@ -84,6 +84,32 @@ public sealed class UsageSessionPersistenceTests : IDisposable
     }
 
     [Fact]
+    public async Task UpdateSession_ZeroLengthClose_RoundTripsFromNewContext()
+    {
+        var factory = CreateFactory();
+        await using (var context = factory.CreateDbContext())
+        {
+            await context.Database.MigrateAsync();
+        }
+
+        UsageSession.TryCreateOpen(June(8, 9), out var open);
+
+        var store = new SqliteUsageSessionStore(factory);
+        await store.AddAsync(open!);
+
+        var closeResult = open!.TryClose(June(8, 9), out var closed);
+        Assert.True(closeResult.Success, closeResult.Error);
+
+        await store.UpdateAsync(closed!);
+
+        var stored = await GetDaySessionsAsync(factory);
+
+        var loaded = Assert.Single(stored);
+        Assert.False(loaded.IsOpen);
+        Assert.Equal(TimeSpan.Zero, loaded.Duration);
+    }
+
+    [Fact]
     public async Task UpdateSession_UnknownId_Throws()
     {
         var factory = CreateFactory();

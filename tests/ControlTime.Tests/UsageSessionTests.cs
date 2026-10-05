@@ -17,14 +17,24 @@ public class UsageSessionTests
     }
 
     [Theory]
-    [InlineData(0)]
+    [InlineData(-1)]
     [InlineData(-60)]
-    public void TryCreate_EndNotAfterStart_Rejected(int durationMinutes)
+    public void TryCreate_EndBeforeStart_Rejected(int durationMinutes)
     {
         var result = UsageSession.TryCreate(Start, Start.AddMinutes(durationMinutes), out var session);
 
         Assert.True(result.Failed);
         Assert.Null(session);
+    }
+
+    [Fact]
+    public void TryCreate_SameInstant_ClosesWithZeroDuration()
+    {
+        var result = UsageSession.TryCreate(Start, Start, out var session);
+
+        Assert.True(result.Success, result.Error);
+        Assert.False(session!.IsOpen);
+        Assert.Equal(TimeSpan.Zero, session.Duration);
     }
 
     [Fact]

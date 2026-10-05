@@ -50,9 +50,11 @@ Out of scope: code signing, auto-update, ARM64, additional anti-tampering, real 
 1. **Access state evaluated in UTC** (`DashboardService`): rule day-of-week and schedule window were evaluated against `GetUtcNow()` (UTC) instead of the user's local clock (`utcOffset` was only applied to usage/bonus/day). In UTC+2 this blocked Mondays until 11:00 local and shifted the weekday during the first two local hours. Fix: convert `now` once with `.ToOffset(utcOffset)` before evaluating rules and resolving the active schedule. Reproduced with 2 regression tests (`DashboardServiceTests`).
 2. **Stale orphan usage session inflated daily usage** (`UsageTrackingService`): after an abnormal stop (debugger kill, crash, power loss), the open session was adopted on restart and kept open; while open it counted continuously from the start of the day, so "usage today" equaled the current wall-clock time (visible in the History week total) and inflated days easily exceeded the daily limit, keeping the state `Blocked`. New semantics: an orphan loaded on first tick is closed at its own `StartedAt` (zero length, unobserved tail discarded, warning logged); a fresh session is opened only if the current tick is Active. Matches the fail-safe rule "a monitoring failure must not produce invalid historical data"; graceful stops keep closing at the last observed input via `StopAsync`. Reproduced with 3 regression tests (`UsageTrackingServiceTests`), including the midnight-crossing inflation case.
 
+3. **Zero-length sessions could not be reloaded** (`UsageSession`/`SqliteUsageSessionStore`): `TryClose` accepts `EndedAt == StartedAt` (Phase 20 clock-jump rule) but `TryCreate` — used by `ToDomain` when reading persisted rows — rejected it, so any zero-length closed session (orphan discard, clock-jump close) crashed every later read that included it (History "has invalid persisted data"). Fix: `TryCreate` now rejects only `EndedAt < StartedAt`, making the round-trip consistent; a zero-length row loads as a legitimate "no computable usage" record. Reproduced with persistence round-trip and domain tests.
+
 ## Tests
 
-260 tests green (`dotnet test`), solution build clean (`dotnet build`).
+262 tests green (`dotnet test`), solution build clean (`dotnet build`).
 
 Version metadata verified on rebuilt artifacts: `ControlTime.App.exe` / `ControlTime.Service.exe` — FileVersion 1.0.0.0, ProductName/Copyright/Company "ControlTime"; `ControlTime-Setup-1.0.0.exe` — FileVersion/ProductVersion 1.0.0, ProductName/Company/Copyright "ControlTime".
 

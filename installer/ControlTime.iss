@@ -68,6 +68,39 @@ const
 var
   DeleteDataRequested: Boolean;
 
+{ La BD de ProgramData la crea primero el Servicio (LocalSystem); sin este }
+{ permiso la App (usuario normal) solo la abre en lectura y toda escritura }
+{ falla con SQLite Error 8 'attempt to write a readonly database'. }
+{ *S-1-5-32-545 = BUILTIN\Users, en formato SID para evitar localizacion. }
+procedure EnsureDataFolderPermissions;
+var
+  DataDir: String;
+  ResultCode: Integer;
+begin
+  DataDir := ExpandConstant('{commonappdata}\ControlTime');
+  if not ForceDirectories(DataDir) then
+  begin
+    Log('No se pudo crear ' + DataDir + ' para ajustar sus permisos.');
+    Exit;
+  end;
+
+  if not Exec(ExpandConstant('{sys}\icacls.exe'),
+    '"' + DataDir + '" /grant *S-1-5-32-545:(OI)(CI)M /T /C /Q', '', SW_HIDE,
+    ewWaitUntilTerminated, ResultCode) then
+    Log('No se pudo ejecutar icacls sobre ' + DataDir + '.')
+  else if ResultCode <> 0 then
+    Log('icacls devolvio codigo ' + IntToStr(ResultCode) + ' sobre ' + DataDir +
+      ' (algunos ficheros pueden haberse omitido con /C).')
+  else
+    Log('Permisos de modificacion para Users aplicados en ' + DataDir + '.');
+end;
+
+procedure CurStepChanged(CurStep: TSetupStep);
+begin
+  if CurStep = ssPostInstall then
+    EnsureDataFolderPermissions;
+end;
+
 procedure InitializeUninstallProgressForm;
 begin
   DeleteDataRequested := False;

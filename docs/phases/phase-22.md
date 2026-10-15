@@ -54,6 +54,8 @@ Out of scope: code signing, auto-update, ARM64, additional anti-tampering, real 
 
 3. **Zero-length sessions could not be reloaded** (`UsageSession`/`SqliteUsageSessionStore`): `TryClose` accepts `EndedAt == StartedAt` (Phase 20 clock-jump rule) but `TryCreate` — used by `ToDomain` when reading persisted rows — rejected it, so any zero-length closed session (orphan discard, clock-jump close) crashed every later read that included it (History "has invalid persisted data"). Fix: `TryCreate` now rejects only `EndedAt < StartedAt`, making the round-trip consistent; a zero-length row loads as a legitimate "no computable usage" record. Reproduced with persistence round-trip and domain tests.
 
+4. **Read-only database for the App on installed machines** (installer): `%PROGRAMDATA%\ControlTime` and `controltime.db` are created by the Service running as LocalSystem (the installer starts it before the App ever runs). The inherited ProgramData ACL gives a standard user only read access, so every App write — including the startup `Migrate()` — failed with `SQLite Error 8: attempt to write a readonly database`, shown as a crash dialog at each logon ("No se pudo preparar la base de datos"). The Service itself was healthy. Fix in `installer/ControlTime.iss`: a new `ssPostInstall` step creates the data folder if absent and applies `icacls /grant *S-1-5-32-545:(OI)(CI)M /T /C /Q` (BUILTIN\Users Modify, inherited by future files, applied recursively to the existing database), before `sc start`. Machines already installed are repaired by re-running the installer (upgrade); the immediate manual workaround is the same elevated `icacls` command.
+
 ## Tests
 
 262 tests green (`dotnet test`), solution build clean (`dotnet build`).
@@ -70,6 +72,7 @@ Delegated to `docs/manual-testing.md` (regression script) plus the Phase 21 inst
 - Regression procedures live in the shared `docs/manual-testing.md`, not in this file, per documentation ownership.
 - GitHub Release attaches only the Setup executable (source is the tag).
 - `v1.0.0` dropped: Phase 23 shipped before the tag existed and no 1.0 artifact was ever published, so the first release is `v1.1.0` (phase retitled accordingly).
+- ProgramData ACL: BUILTIN\Users gets Modify on `%PROGRAMDATA%\ControlTime` (fix 4). A technically skilled user could therefore edit the usage database directly; this is consistent with the documented security model (resistance to casual bypass, not a security boundary) and unavoidable while the App writes rules/grants directly to the shared database.
 
 ## Known limitations
 

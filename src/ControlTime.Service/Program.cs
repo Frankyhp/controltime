@@ -54,7 +54,14 @@ builder.Services.AddTransient<DashboardService>(provider => new DashboardService
     provider.GetRequiredService<UsageService>(),
     provider.GetRequiredService<RuleEngine>()));
 
-builder.Services.AddSingleton<UsageTrackingService>();
+builder.Services.AddSingleton<UsageTrackingService>(provider => new UsageTrackingService(
+    provider.GetRequiredService<IUsageSessionStore>(),
+    provider.GetService<ILogger<UsageTrackingService>>(),
+    // El bucle de monitoreo emite un tick por segundo: cualquier hueco entre
+    // ticks muy superior a ese intervalo significa que el proceso estuvo
+    // congelado (suspensión/apagado con apagado rápido) y ese tramo no puede
+    // computarse como uso.
+    observationGapTolerance: TimeSpan.FromSeconds(15)));
 builder.Services.AddTransient<MonitoringService>(provider => new MonitoringService(
     provider.GetRequiredService<IActivityMonitor>(),
     provider.GetRequiredService<DashboardService>(),

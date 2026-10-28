@@ -224,6 +224,97 @@ public class UsageTrackingServiceTests
         Assert.Single(_store.Sessions, s => s.IsOpen);
     }
 
+    [Fact]
+    public async Task ObservationGap_WithSurvivedOpenSession_ClosesAtLastObservedInstantAndOpensFresh()
+    {
+        // Reproduction: the machine is suspended (or the process is frozen by a
+        // fast-startup shutdown) and later resumes with the same tracking
+        // process alive. The unobserved stretch must not become usage.
+        var service = CreateServiceWithGapTolerance();
+        await service.TickAsync(Status(ActivityState.Active, At(0), At(0)));
+        await service.TickAsync(Status(ActivityState.Active, At(0).AddSeconds(10), At(0).AddSeconds(10)));
+
+        // Process frozen: next observed tick is more than 8 hours later.
+        await service.TickAsync(Status(ActivityState.Active, At(485), At(486)));
+
+        var closed = Assert.Single(_store.Sessions, s => !s.IsOpen);
+        Assert.Equal(At(0), closed.StartedAt);
+        Assert.Equal(At(0).AddSeconds(10), closed.EndedAt);
+        Assert.Equal(TimeSpan.FromSeconds(10), closed.Duration);
+
+        var fresh = Assert.Single(_store.Sessions, s => s.IsOpen);
+        Assert.Equal(At(486), fresh.StartedAt);
+    }
+
+    [Fact]
+    public async Task ObservationGap_AcrossMidnight_DoesNotInflateTodaysUsage()
+    {
+        // Reproduction of the reported bug: an open session survived overnight
+        // (frozen process). Today's usage must be only the observed stretch.
+        var service = CreateServiceWithGapTolerance();
+        var morning = new DateTimeOffset(2026, 9, 21, 8, 0, 0, TimeSpan.Zero);
+        await service.TickAsync(Status(ActivityState.Active, morning, morning));
+        await service.TickAsync(
+            Status(ActivityState.Active, morning.AddSeconds(10), morning.AddSeconds(10)));
+
+        // Machine "shut down" at 08:30 (process survives), back at 20:06 next day.
+        var resumed = new DateTimeOffset(2026, 9, 22, 20, 6, 0, TimeSpan.Zero);
+        await service.TickAsync(Status(ActivityState.Active, resumed, resumed));
+
+        var dayStart = new DateTimeOffset(2026, 9, 22, 0, 0, 0, TimeSpan.Zero);
+
+        var usage = UsageCalculator.GetUsageForDay(
+            _store.Sessions,
+            dayStart,
+            dayStart.AddDays(1),
+            asOf: resumed);
+
+        Assert.Equal(TimeSpan.Zero, usage);
+    }
+
+    [Fact]
+    public async Task ObservationGap_WithoutOpenSession_DoesNotOpenSessionDuringGap()
+    {
+        var service = CreateServiceWithGapTolerance();
+        await service.TickAsync(Status(ActivityState.Idle, At(0), At(0)));
+        await service.TickAsync(Status(ActivityState.Idle, At(600), At(600)));
+
+        Assert.Empty(_store.Sessions);
+    }
+
+    [Fact]
+    public async Task IdleAfterGap_ClosesAtObservedBoundaryNotAtClaimedLastInput()
+    {
+        // The WTS fallback claims LastInputAt == now without real input evidence;
+        // a detected gap must close at the last observed tick, not at the claim.
+        var service = CreateServiceWithGapTolerance();
+        await service.TickAsync(Status(ActivityState.Active, At(0), At(0)));
+        await service.TickAsync(Status(ActivityState.Active, At(0).AddSeconds(10), At(0).AddSeconds(10)));
+
+        // After the gap the monitor claims input at minute 900 while the last
+        // observation ended 10 seconds after minute 0.
+        await service.TickAsync(Status(ActivityState.Idle, At(900), At(900)));
+
+        var closed = Assert.Single(_store.Sessions);
+        Assert.False(closed.IsOpen);
+        Assert.Equal(At(0).AddSeconds(10), closed.EndedAt);
+    }
+
+    [Fact]
+    public async Task GapSmallerThanTolerance_KeepsSessionOpen()
+    {
+        // A stall smaller than the tolerance is normal jitter and must not
+        // split the session.
+        var service = CreateServiceWithGapTolerance();
+        await service.TickAsync(Status(ActivityState.Active, At(0), At(0)));
+        await service.TickAsync(Status(ActivityState.Active, At(0).AddSeconds(10), At(0).AddSeconds(10)));
+
+        var session = Assert.Single(_store.Sessions);
+        Assert.True(session.IsOpen);
+    }
+
+    private UsageTrackingService CreateServiceWithGapTolerance() => new(_store, observationGapTolerance: TimeSpan.FromSeconds(15));
+
     private sealed class InMemoryUsageSessionStore : IUsageSessionStore
     {
         public List<UsageSession> Sessions { get; } = [];

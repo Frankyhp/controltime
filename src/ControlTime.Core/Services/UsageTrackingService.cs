@@ -6,15 +6,26 @@ namespace ControlTime.Core.Services;
 
 public sealed class UsageTrackingService(
     IUsageSessionStore sessionStore,
-    ILogger<UsageTrackingService>? logger = null)
+    ILogger<UsageTrackingService>? logger = null,
+    TimeSpan? observationGapTolerance = null)
 {
     private readonly IUsageSessionStore _sessionStore = sessionStore
         ?? throw new ArgumentNullException(nameof(sessionStore));
     private readonly ILogger<UsageTrackingService>? _logger = logger;
 
+    // La tolerancia solo tiene significado para el huésped que conoce el
+    // intervalo de su bucle de sondeo: null desactiva la detección de huecos.
+    private readonly TimeSpan? _observationGapTolerance =
+        observationGapTolerance is TimeSpan tolerance && tolerance <= TimeSpan.Zero
+            ? throw new ArgumentOutOfRangeException(
+                nameof(observationGapTolerance),
+                "The observation gap tolerance must be positive.")
+            : observationGapTolerance;
+
     private UsageSession? _openSession;
     private bool _loaded;
     private bool _ticking;
+    private DateTimeOffset? _lastObservedAt;
 
     public UsageSession? OpenSession => _openSession;
 
@@ -93,6 +104,24 @@ public sealed class UsageTrackingService(
             }
         }
 
+        // Hueco de observación: el proceso no emitió ticks durante un tiempo muy
+        // superior al intervalo de sondeo (suspensión o congelación del proceso
+        // sobreviviendo al apagado del equipo). Todo el tramo desde el último
+        // tick observado carece de evidencia de uso real y no puede convertirse
+        // en uso del día; la sesión abierta se cierra en el último instante
+        // observado y, si la actividad sigue siendo real, se abre otra en el
+        // instante presente.
+        if (_observationGapTolerance is TimeSpan tolerance
+            && _lastObservedAt is DateTimeOffset previous
+            && status.Timestamp > previous
+            && status.Timestamp - previous > tolerance
+            && _openSession is UsageSession stale)
+        {
+            await CloseAtBoundaryAsync(stale, previous, cancellationToken);
+        }
+
+        _lastObservedAt = status.Timestamp;
+
         if (status.State == ActivityState.Active)
         {
             if (_openSession is null)
@@ -136,6 +165,37 @@ public sealed class UsageTrackingService(
                 orphan.Id);
 
             await _sessionStore.DeleteAsync(orphan.Id, cancellationToken);
+        }
+    }
+
+    private async Task CloseAtBoundaryAsync(
+        UsageSession open,
+        DateTimeOffset boundary,
+        CancellationToken cancellationToken)
+    {
+        _openSession = null;
+
+        DateTimeOffset closeAt = open.StartedAt > boundary ? open.StartedAt : boundary;
+
+        if (open.TryClose(closeAt, out UsageSession? closed).Success && closed is not null)
+        {
+            await _sessionStore.UpdateAsync(closed, cancellationToken);
+
+            _logger?.LogWarning(
+                "Hueco de observación detectado (último tick observado en {Boundary:O}, tolerancia {Tolerance}). " +
+                "La sesión de uso {SessionId} se cierra en el último instante observado; el tramo posterior " +
+                "sin monitorizar no se computa como uso.",
+                boundary,
+                _observationGapTolerance,
+                open.Id);
+        }
+        else
+        {
+            _logger?.LogError(
+                "No se pudo cerrar la sesión de uso {SessionId} en el hueco de observación; se descarta para no dejar datos inválidos.",
+                open.Id);
+
+            await _sessionStore.DeleteAsync(open.Id, cancellationToken);
         }
     }
 

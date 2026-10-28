@@ -189,7 +189,7 @@ Created:
 * `docs/manual-testing.md`: reusable manual regression script (auth, rules, bonus, activity, tracking, history, warnings, enforcement, tray/startup, Service, install/upgrade/uninstall)
 * `README.md` rewritten to the current architecture (App + Service, ProgramData database, installer, file logs)
 * `Directory.Build.props` extended with Product/Company/Copyright assembly metadata; installer Setup gains `VersionInfoCompany`/`VersionInfoCopyright` (verified on published executables and Setup: FileVersion 1.0.0.0, ProductName/Copyright/Company ControlTime)
-* Fixes from regression (documented in `docs/phases/phase-22.md`): `DashboardService` evaluates rules (weekday + schedule window) in the user's local offset instead of UTC; `UsageTrackingService` no longer adopts stale orphan open sessions — an orphan loaded on the first tick is closed at its own `StartedAt` (zero length, unobserved tail discarded) and a fresh session opens only while the current tick is Active (prevents today's usage from counting midnight→now); `UsageSession.TryCreate` accepts `EndedAt == StartedAt` so zero-length closed sessions round-trip from SQLite consistently with `TryClose`; the installer grants BUILTIN\Users Modify on `%PROGRAMDATA%\ControlTime` (`icacls`, `ssPostInstall`) so the App can write the Service-created database (fixes "attempt to write a readonly database" at logon on installed machines)
+* Fixes from regression (documented in `docs/phases/phase-22.md`): `DashboardService` evaluates rules (weekday + schedule window) in the user's local offset instead of UTC; `UsageTrackingService` no longer adopts stale orphan open sessions — an orphan loaded on the first tick is closed at its own `StartedAt` (zero length, unobserved tail discarded) and a fresh session opens only while the current tick is Active (prevents today's usage from counting midnight→now); `UsageSession.TryCreate` accepts `EndedAt == StartedAt` so zero-length closed sessions round-trip from SQLite consistently with `TryClose`; the installer grants BUILTIN\Users Modify on `%PROGRAMDATA%\ControlTime` (`icacls`, `ssPostInstall`) so the App can write the Service-created database (fixes "attempt to write a readonly database" at logon on installed machines); `UsageTrackingService` optionally detects observation gaps between ticks (`observationGapTolerance`, 15 s in the Service's 1 s loop) and closes the open session at the last observed tick — fixes usage inflating ~20 h/day when Fast Startup freezes the Service process overnight with the session open
 
 * `docs/phases/phase-23.md`
 * `ControlTime.App` floating remaining-time overlay (version 1.1, presentation-only): `Views/TimerOverlayWindow` (borderless, transparent background, semi-transparent `H:mm` text with drop shadow, always-on-top with `Deactivated` re-assert, `DragMove`, no focus stealing) and `Services/TimerOverlayController` (singleton): formats `Snapshot.RemainingTime` from `ServiceClientHost` state, shows the overlay only while the Service is available (auto-hide/auto-restore without touching the preference), toggled from the tray
@@ -219,6 +219,11 @@ Phase 23 — Floating Remaining-Time Overlay is complete (implemented by explici
 Current phase:
 
 `Phase 22 — Release Candidate and Version 1.1` (in progress — manual regression and `v1.1.0` tag/release pending)
+
+Planned pending phases (documented in `docs/PLAN_CONTROLTIME.md`, not started):
+
+* `Phase 24 — Service-Side User Input Probe` — real user-input measurement in the Service so the WTS fallback no longer reports `Active`/`LastInputAt = now` without evidence; closes the Modern Standby (S0) usage-inflation hole left open by the observation-gap fix.
+* `Phase 25 — Historical Usage Cleanup Tool` — supported procedure to zero out the already-persisted overnight sessions created by that bug on affected machines (they keep inflating Historial and daily limits).
 
 Do not implement functionality belonging to future phases without planning them first. Phase 22 adds no new functionality: fixes only, driven by the regression.
 

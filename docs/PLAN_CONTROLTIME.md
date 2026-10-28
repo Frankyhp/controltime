@@ -1141,6 +1141,87 @@ time, toggled from the system tray menu.
 
 ---
 
+# Phase 24 — Service-Side User Input Probe
+
+Status: pending (planned, not implemented).
+
+## Goal
+
+Measure real user input from the Windows Service, so usage tracking no longer
+depends on the App reporting, and stop attributing usage while nobody is at
+the keyboard.
+
+## Problem being solved
+
+While no fresh App activity report exists, the Service falls back to
+`WtsConsoleSessionMonitor`, which reports `Active` with `LastInputAt = now`
+whenever the console session is Active/Connected — including when nobody is
+present and including during Modern Standby (S0), where the Service keeps
+ticking so the Phase 22 observation-gap detection never fires. Usage is
+therefore attributed optimistically between fresh reports.
+
+## Scope
+
+* `ControlTime.Infrastructure/Windows/`: read the last input time of the
+  active console session from the Service (per-session
+  `WinSta0_DesktopInUseTimeout` / shared `WTSSESSION_INFO`-style approach to be
+  researched in the phase plan; the last input moment must come from real user
+  input, not from wall-clock time).
+* The WTS fallback keeps reporting session state (`Active` / `Locked`) but
+  `LastInputAt` becomes the probed input moment.
+* Activity idle threshold behaviour and warning/enforcement tuning rechecked
+  against the new source.
+
+## Out of scope
+
+* Any new IPC protocol or a separate agent process (the App remains the
+  user-session agent).
+* Detecting input on the secure desktop / lock screen.
+
+## Validation
+
+* Manual: leave the machine logged in and unattended (App closed) for longer
+  than the idle threshold; usage must stop growing.
+* Manual: Modern Standby suspend + resume must not add the suspended stretch to
+  the day.
+
+---
+
+# Phase 25 — Historical Usage Cleanup Tool
+
+Status: pending (planned, not implemented).
+
+## Goal
+
+Provide a supported way to repair already-inflated usage databases created
+before the Phase 22 gap-detection fix.
+
+## Problem being solved
+
+Affected machines contain overnight sessions (observed: 21 h, 23 h, 1 day, 3
+days) that were never actually used. The fix prevents new ones but does not
+rewrite history: the Historial view and the daily limits keep reflecting those
+bogus sessions, so those days remain `Blocked`.
+
+## Scope
+
+* A small script or documented SQL procedure (kept out of the shipped binaries)
+  that lists sessions longer than an administrator-provided threshold and closes
+  them at their own `StartedAt` (zero length, matching the established "no
+  computable usage" convention).
+* Requires the Service stopped and warns that the legitimate evening usage
+  contained in those sessions is lost too (it cannot be reconstructed).
+* Steps for applying it on an installed machine (`net stop ControlTimeService`,
+  run, `net start ControlTimeService`).
+
+## Out of scope
+
+* Automatic self-repair on startup.
+* Deleting rows (zero-length closing preserves the audit trail).
+* Recomputing enforcement history (state is always re-derived from rules).
+
+---
+
 # Product milestones
 
 ## Milestone A — Rules prototype

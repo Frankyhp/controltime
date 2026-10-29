@@ -11,6 +11,16 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
+// Modo ayudante efímero de la sonda de entrada (Fase 24): lanzado por el propio
+// Servicio en la sesión del usuario, mide GetLastInputInfo y publica el resultado
+// en memoria compartida. Sale antes de construir el host: jamás abre la base de
+// datos ni escribe logs.
+if (args.Length == 2
+    && string.Equals(args[0], UserInputProbeChild.ProbeModeArgument, StringComparison.Ordinal))
+{
+    return UserInputProbeChild.Run(args[1]);
+}
+
 var builder = Host.CreateApplicationBuilder(args);
 
 builder.Services.AddWindowsService(options =>
@@ -38,10 +48,25 @@ builder.Services.AddSingleton<IAdminAuthService>(
 
 builder.Services.AddSingleton<ActivityReportSink>();
 
-builder.Services.AddSingleton<CompositeActivityMonitor>(provider => new CompositeActivityMonitor(
-    new WtsConsoleSessionMonitor(
-        provider.GetService<ILogger<WtsConsoleSessionMonitor>>()),
-    provider.GetRequiredService<ActivityReportSink>()));
+// Sonda de entrada real de la sesión consola (Fase 24): solo se consulta desde
+// el fallback WTS, que el CompositeActivityMonitor ya usa únicamente cuando no
+// hay informe fresco del App (prioridad IPC de la Fase 18 intacta).
+builder.Services.AddSingleton(provider => new ConsoleSessionInputProbe(
+    logger: provider.GetService<ILogger<ConsoleSessionInputProbe>>()));
+
+builder.Services.AddSingleton<CompositeActivityMonitor>(provider =>
+{
+    ConsoleSessionInputProbe inputProbe = provider.GetRequiredService<ConsoleSessionInputProbe>();
+
+    return new CompositeActivityMonitor(
+        new WtsConsoleSessionMonitor(
+            provider.GetService<ILogger<WtsConsoleSessionMonitor>>(),
+            sessionId => inputProbe.TryGetLastInputAt(sessionId, out DateTimeOffset lastInputAt)
+                ? lastInputAt
+                : null,
+            WindowsActivityMonitor.DefaultIdleThreshold),
+        provider.GetRequiredService<ActivityReportSink>());
+});
 
 builder.Services.AddSingleton<IActivityMonitor>(
     provider => provider.GetRequiredService<CompositeActivityMonitor>());
@@ -95,3 +120,4 @@ builder.Services.AddSingleton(provider => new ControlTimePipeServer(
 builder.Services.AddHostedService<PipeServerHost>();
 
 await builder.Build().RunAsync();
+return 0;

@@ -1143,8 +1143,8 @@ time, toggled from the system tray menu.
 
 # Phase 24 — Service-Side User Input Probe
 
-Status: pending (planned, not implemented). Technical feasibility validated by spike
-(`docs/spike-phase-24-input-probe.md`, 2026-10-29).
+Status: implemented. Automated tasks complete (build + suite green). Manual
+validation checklist pending on a target machine (`docs/phases/phase-24.md`).
 
 ## Goal
 

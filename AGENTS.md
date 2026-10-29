@@ -196,6 +196,11 @@ Created:
 * `ControlTime.App` tray menu gains checkable "Mostrar tiempo restante en pantalla" (`TimerOverlayToggleRequested` + `SetTimerOverlayPreference`); preference and window position persisted under app settings keys `TimerOverlayVisible` / `TimerOverlayLeft` / `TimerOverlayTop` (position clamped to the virtual screen; default top-right of primary work area)
 * `Directory.Build.props` `<Version>` bumped to `1.1.0`
 
+* `docs/phases/phase-24.md`
+* `ControlTime.Infrastructure` `Windows/` service-side user input probe (Phase 24, technique per `docs/spike-phase-24-input-probe.md`): `InputProbeApi` (Win32 primitives: secure pagefile-backed shared section, token duplication, `LoadUserProfile`, environment block, `CreateProcessAsUserW` with `lpDesktop = NULL`), `ConsoleInputProbeRunner` (validated launch sequence against the active console session), `UserInputProbeChild` (`--probe-input <mapName>` helper mode: publishes the session's real last-input UTC FILETIME into the shared section; never touches the database), `ConsoleSessionInputProbe` (non-blocking cache + ~5 s cadence + single-flight + throttled failure logging); `WtsApi` gains `WTSQueryUserToken` and `TryGetUserName`
+* `ControlTime.Infrastructure` `WtsConsoleSessionMonitor` optionally takes a last-input probe: an active console session is classified Active/Idle via `ActivityEvaluator` with the App's idle threshold (`WindowsActivityMonitor.DefaultIdleThreshold`); without a fresh probe result it keeps the historical optimistic `Active / LastInputAt = now` (`EvaluateActive` is the pure decision point, future-dated probes clamp to now)
+* `ControlTime.Service` helper mode `ControlTime.Service.exe --probe-input <mapName>` (early exit before host/database construction, no new shipped binary, no installer change) and DI wiring of the probe into the WTS fallback in `Program.cs`; the probe only runs while no fresh App IPC report exists (`CompositeActivityMonitor` fallback, Phase 18 priority unchanged); usage sessions now close at the probed `LastInputAt` even when the App is closed (fixes the Modern Standby / unattended-idle usage-inflation hole)
+
 Phase 17 was split into `Phase 17a — Windows Service Foundation` and `Phase 17b — Service IPC and App Client`.
 
 Phase 17a — Windows Service Foundation is complete.
@@ -216,13 +221,14 @@ Phase 22 — Release Candidate and Version 1.1 is in progress: plan written (`do
 
 Phase 23 — Floating Remaining-Time Overlay is complete (implemented by explicit user request as version 1.1; manual validation checklist in `docs/phases/phase-23.md` pending on a target machine).
 
+Phase 24 — Service-Side User Input Probe is implemented by explicit user request (automated tasks complete: build + suite green, helper-mode smoke; manual validation checklist in `docs/phases/phase-24.md` pending on a target machine).
+
 Current phase:
 
 `Phase 22 — Release Candidate and Version 1.1` (in progress — manual regression and `v1.1.0` tag/release pending)
 
 Planned pending phases (documented in `docs/PLAN_CONTROLTIME.md`, not started):
 
-* `Phase 24 — Service-Side User Input Probe` — real user-input measurement in the Service so the WTS fallback no longer reports `Active`/`LastInputAt = now` without evidence; closes the Modern Standby (S0) usage-inflation hole left open by the observation-gap fix.
 * `Phase 25 — Historical Usage Cleanup Tool` — supported procedure to zero out the already-persisted overnight sessions created by that bug on affected machines (they keep inflating Historial and daily limits).
 
 Do not implement functionality belonging to future phases without planning them first. Phase 22 adds no new functionality: fixes only, driven by the regression.

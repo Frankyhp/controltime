@@ -50,6 +50,42 @@ internal static class WtsApi
         uint sessionId,
         bool bWait);
 
+    [DllImport("wtsapi32.dll", SetLastError = true)]
+    public static extern bool WTSQueryUserToken(uint sessionId, out IntPtr token);
+
+    [DllImport("wtsapi32.dll", SetLastError = true)]
+    private static extern bool WTSQuerySessionInformationW(
+        IntPtr hServer,
+        uint sessionId,
+        int infoClass,
+        out IntPtr buffer,
+        out int bytesReturned);
+
+    private const int WtsUserName = 5;
+
+    public static string? TryGetUserName(uint sessionId)
+    {
+        if (!WTSQuerySessionInformationW(
+                CurrentServerHandle,
+                sessionId,
+                WtsUserName,
+                out IntPtr buffer,
+                out _))
+        {
+            return null;
+        }
+
+        try
+        {
+            string userName = Marshal.PtrToStringUni(buffer) ?? string.Empty;
+            return userName.Length > 0 ? userName : null;
+        }
+        finally
+        {
+            WTSFreeMemory(buffer);
+        }
+    }
+
     public static bool TryGetConnectState(uint sessionId, out ConnectStateClass connectState)
     {
         connectState = ConnectStateClass.Init;

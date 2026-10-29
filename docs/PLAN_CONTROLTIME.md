@@ -1143,7 +1143,8 @@ time, toggled from the system tray menu.
 
 # Phase 24 — Service-Side User Input Probe
 
-Status: pending (planned, not implemented).
+Status: pending (planned, not implemented). Technical feasibility validated by spike
+(`docs/spike-phase-24-input-probe.md`, 2026-10-29).
 
 ## Goal
 
@@ -1160,30 +1161,65 @@ present and including during Modern Standby (S0), where the Service keeps
 ticking so the Phase 22 observation-gap detection never fires. Usage is
 therefore attributed optimistically between fresh reports.
 
+## Validated probe technique (spike findings)
+
+* The two originally-documented in-band reads are dead on Windows 11 client:
+  the `WinSta0_DesktopInUseTimeout` shared section no longer exists, and
+  `WinStationQueryInformation.LastInputTime` is always 0 outside Windows
+  Server/RDS. Details in `docs/spike-phase-24-input-probe.md`.
+* The supported pattern works end-to-end from LocalSystem:
+  `WTSQueryUserToken` + primary token + `LoadUserProfile` +
+  `CreateEnvironmentBlock` + `CreateProcessAsUserW` launching a short-lived
+  helper that calls `GetLastInputInfo` for its (user) session and publishes the
+  FILETIME through a pagefile-backed `Global\` shared section created by the
+  Service with an explicit DACL. Measured end-to-end cost < 2 s per probe.
+* Critical detail: `STARTUPINFO.lpDesktop` must stay `NULL`; passing
+  `Winsta0\Default` from session 0 yields `0xC0000142` for any GUI-import
+  process (.NET included). Without it, `GetLastInputInfo` in the child still
+  returns the user session's real last input.
+
 ## Scope
 
-* `ControlTime.Infrastructure/Windows/`: read the last input time of the
-  active console session from the Service (per-session
-  `WinSta0_DesktopInUseTimeout` / shared `WTSSESSION_INFO`-style approach to be
-  researched in the phase plan; the last input moment must come from real user
-  input, not from wall-clock time).
-* The WTS fallback keeps reporting session state (`Active` / `Locked`) but
-  `LastInputAt` becomes the probed input moment.
-* Activity idle threshold behaviour and warning/enforcement tuning rechecked
-  against the new source.
+* `ControlTime.Infrastructure/Windows/`: `ConsoleSessionInputProbe` performing
+  the validated launch sequence against the active console session, exposing
+  `TryGetLastInputAt(sessionId, out DateTimeOffset)`; no DACL changes to the
+  window station or desktop.
+* Helper process: prefer a `--probe-input <mapName>` mode of the already
+  self-contained `ControlTime.Service.exe` (no new shipped binary, no
+  installer changes); the probe path must never open the database.
+* `WtsConsoleSessionMonitor` (Service fallback): keeps reporting session state
+  (`Active` / `Locked`) from WTS, but when the console session is active the
+  state becomes `ActivityEvaluator.Evaluate(now, probedLastInputAt, false,
+  idleThreshold)` with the App's idle threshold
+  (`WindowsActivityMonitor.DefaultIdleThreshold`, 5 min).
+* Probe cadence only while no fresh App IPC report exists (Phase 18 priority
+  unchanged); ~every 5-10 s; usage close-on-idle stays precise because the
+  session closes at the probed `LastInputAt`, not at detection time.
+* Probe failure (any step): keep the current optimistic `Active / LastInputAt
+  = now` with throttled error logging (agreed decision) — never stop counting
+  legitimate usage because the probe broke.
 
 ## Out of scope
 
-* Any new IPC protocol or a separate agent process (the App remains the
-  user-session agent).
-* Detecting input on the secure desktop / lock screen.
+* Any new IPC protocol or a separate persistent agent process (the App remains
+  the user-session agent; the helper is a sub-second one-shot process).
+* Detecting input on the secure desktop / lock screen (WTS already reports
+  `Locked`).
+* Configurable idle threshold UI.
 
 ## Validation
 
 * Manual: leave the machine logged in and unattended (App closed) for longer
-  than the idle threshold; usage must stop growing.
+  than the idle threshold; usage must stop growing within one probe interval
+  past the threshold; Service log must show the Idle transition and the usage
+  session closed at the real last-input moment.
 * Manual: Modern Standby suspend + resume must not add the suspended stretch to
   the day.
+* Manual: with the App open, fresh IPC reports must still win (banner/tray
+  behaviour unchanged).
+* Manual: stop the Service from a non-System context (console debug run) —
+  probe unavailable → optimistic fallback + throttled log, no per-tick errors.
+
 
 ---
 

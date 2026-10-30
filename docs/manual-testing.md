@@ -61,6 +61,7 @@ Useful log locations: `%PROGRAMDATA%\ControlTime\logs\` (one file per day, per p
 - [ ] 14-day list: Uso matches sessions per day; "Hoy"/"Ayer" labels correct around midnight.
 - [ ] Selecting a day shows its sessions; times coherent with activity periods.
 - [ ] Manual refresh updates after a new active period.
+- [ ] (Phase 25) Databases inflated by the pre-Phase-22 gap bug can be repaired with the documented SQL procedure in `docs/phases/phase-25.md`: cleaned sessions become zero-length, Historial stops counting them and the affected days stop being `Blocked`.
 
 ## 7. Warnings and notifications
 

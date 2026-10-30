@@ -201,6 +201,9 @@ Created:
 * `ControlTime.Infrastructure` `WtsConsoleSessionMonitor` optionally takes a last-input probe: an active console session is classified Active/Idle via `ActivityEvaluator` with the App's idle threshold (`WindowsActivityMonitor.DefaultIdleThreshold`); without a fresh probe result it keeps the historical optimistic `Active / LastInputAt = now` (`EvaluateActive` is the pure decision point, future-dated probes clamp to now)
 * `ControlTime.Service` helper mode `ControlTime.Service.exe --probe-input <mapName>` (early exit before host/database construction, no new shipped binary, no installer change) and DI wiring of the probe into the WTS fallback in `Program.cs`; the probe only runs while no fresh App IPC report exists (`CompositeActivityMonitor` fallback, Phase 18 priority unchanged); usage sessions now close at the probed `LastInputAt` even when the App is closed (fixes the Modern Standby / unattended-idle usage-inflation hole)
 
+* `docs/phases/phase-25.md`
+* Documented SQL cleanup procedure (kept out of the shipped binaries): preview sessions longer than an administrator-provided threshold and close them at their own `StartedAt` (zero length — the Phase 22 "no computable usage" convention) in one transaction; residual open sessions are zeroed too; mandatory prior backup and stopped Service; runbook for installed machines (`net stop ControlTimeService` → backup → preview → apply → start) plus development reproduction/validation INSERTs; optional `docs/manual-testing.md` Historial entry points to it
+
 Phase 17 was split into `Phase 17a — Windows Service Foundation` and `Phase 17b — Service IPC and App Client`.
 
 Phase 17a — Windows Service Foundation is complete.
@@ -223,13 +226,15 @@ Phase 23 — Floating Remaining-Time Overlay is complete (implemented by explici
 
 Phase 24 — Service-Side User Input Probe is implemented by explicit user request (automated tasks complete: build + suite green, helper-mode smoke; manual validation checklist in `docs/phases/phase-24.md` pending on a target machine).
 
+Phase 25 — Historical Usage Cleanup Tool is complete (documented SQL procedure per plan, no shipped code changed; the procedure was validated against a real SQLite database with inflated/legitimate/open/zero-length fixtures; manual validation checklist in `docs/phases/phase-25.md` pending on an affected installed machine).
+
 Current phase:
 
 None in progress. `Phase 22 — Release Candidate and Version 1.1` is complete and `v1.1.0` is released; the pending Phase 23 and Phase 24 manual checklists are validated against the release, fixing forward if needed.
 
 Planned pending phases (documented in `docs/PLAN_CONTROLTIME.md`, not started):
 
-* `Phase 25 — Historical Usage Cleanup Tool` — supported procedure to zero out the already-persisted overnight sessions created by that bug on affected machines (they keep inflating Historial and daily limits).
+None.
 
 Do not implement functionality belonging to future phases without planning them first. Phase 22 adds no new functionality: fixes only, driven by the regression.
 

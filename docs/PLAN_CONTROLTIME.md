@@ -1225,7 +1225,10 @@ therefore attributed optimistically between fresh reports.
 
 # Phase 25 — Historical Usage Cleanup Tool
 
-Status: pending (planned, not implemented).
+Status: implemented (documented SQL procedure, no shipped code). Automated
+tasks complete (build + suite green; procedure validated against a real
+SQLite database). Manual validation checklist in `docs/phases/phase-25.md`
+pending on an affected installed machine.
 
 ## Goal
 

@@ -1,6 +1,6 @@
 # Phase 22 — Release Candidate and Version 1.1
 
-Status: in progress — automated tasks complete; manual regression and the release tag (`v1.1.0`) are pending.
+Status: complete — manual regression passed on the target machine (Phase 22 scope); release `v1.1.0` tagged and published on GitHub.
 
 ## Goal
 
@@ -60,13 +60,15 @@ Out of scope: code signing, auto-update, ARM64, additional anti-tampering, real 
 
 ## Tests
 
-267 tests green (`dotnet test`), solution build clean (`dotnet build`).
+279 tests green (`dotnet test`), solution build clean (`dotnet build`).
 
-Version metadata verified on rebuilt artifacts (during the original 1.0.0 audit, before the Phase 23 bump): `ControlTime.App.exe` / `ControlTime.Service.exe` — FileVersion 1.0.0.0, ProductName/Copyright/Company "ControlTime"; `ControlTime-Setup-1.0.0.exe` — FileVersion/ProductVersion 1.0.0, ProductName/Company/Copyright "ControlTime". The final release artifacts are rebuilt and re-audited at 1.1.0 before tagging.
+Version metadata verified on rebuilt artifacts (during the original 1.0.0 audit, before the Phase 23 bump): `ControlTime.App.exe` / `ControlTime.Service.exe` — FileVersion 1.0.0.0, ProductName/Copyright/Company "ControlTime"; `ControlTime-Setup-1.0.0.exe` — FileVersion/ProductVersion 1.0.0, ProductName/Company/Copyright "ControlTime". The final release artifacts were rebuilt at 1.1.0 from the tagged tree (including the regression fixes and Phase 24) and re-audited before tagging.
 
 ## Manual validation
 
 Delegated to `docs/manual-testing.md` (regression script) plus the Phase 21 installer checklist.
+
+Result: the `docs/manual-testing.md` regression was executed end-to-end on a real machine and passed, exercising the Phase 22 scope (including the fixes above and the Phase 21 install/upgrade/uninstall checklist). The feature-specific manual checklists of Phase 23 (floating overlay, `docs/phases/phase-23.md`) and Phase 24 (service-side input probe, `docs/phases/phase-24.md`) remain pending dedicated validation on a target machine; they are not blockers for `v1.1.0` by explicit user decision.
 
 ## Decisions
 
@@ -75,6 +77,7 @@ Delegated to `docs/manual-testing.md` (regression script) plus the Phase 21 inst
 - GitHub Release attaches only the Setup executable (source is the tag).
 - `v1.0.0` dropped: Phase 23 shipped before the tag existed and no 1.0 artifact was ever published, so the first release is `v1.1.0` (phase retitled accordingly).
 - ProgramData ACL: BUILTIN\Users gets Modify on `%PROGRAMDATA%\ControlTime` (fix 4). A technically skilled user could therefore edit the usage database directly; this is consistent with the documented security model (resistance to casual bypass, not a security boundary) and unavoidable while the App writes rules/grants directly to the shared database.
+- Release proceeds with the Phase 23 and Phase 24 feature checklists still pending on a target machine (explicit user decision after the Phase 22 regression passed); their validation continues against `v1.1.0` and any finding is fixed forward.
 
 ## Known limitations
 
